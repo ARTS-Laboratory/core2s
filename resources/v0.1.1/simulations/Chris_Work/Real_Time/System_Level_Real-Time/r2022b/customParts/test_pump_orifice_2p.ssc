@@ -1,0 +1,30 @@
+component test_pump_orifice_2p
+% Diagnostic 2P orifice wrapper for SpeedGoat testing
+
+nodes
+    P = foundation.two_phase_fluid.two_phase_fluid; % P
+    B = foundation.two_phase_fluid.two_phase_fluid; % B
+end
+
+inputs
+    S = {0, 'm'}; % Orifice control-member position
+end
+
+components (ExternalAccess = none)
+
+    O = fluids.two_phase_fluid.valves_orifices.orifice;
+
+end
+
+connections
+
+    % Hydraulic path
+    connect(P, O.A);
+    connect(O.B, B);
+
+    % Direct control of the native orifice
+    connect(S, O.S);
+
+end
+
+end
