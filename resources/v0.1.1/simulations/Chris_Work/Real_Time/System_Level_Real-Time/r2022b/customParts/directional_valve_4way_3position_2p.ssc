@@ -1,0 +1,117 @@
+component directional_valve_4way_3position_2p
+    
+nodes 
+    P = fluids.two_phase_fluid.valves_orifices.orifice;
+    A = fluids.two_phase_fluid.valves_orifices.orifice;
+    B = fluids.two_phase_fluid.valves_orifices.orifice;
+    T = fluids.two_phase_fluid.valves_orifices.orifice;
+end
+
+inputs
+    S = {0, 'm'};
+end
+
+parameters
+    spool_max = {7.5e-3, 'm'};
+    spool_deadband = {2.5e-3, 'm'};
+    orifice_travel = {5e-3, 'm'};
+end
+
+outputs (ExternalAccess = none)
+    area_PA = {2.03e-9, 'm^2'};
+    area_PB = {2.03e-9, 'm^2'};
+    area_AT = {2.03e-9, 'm^2'};
+    area_BT = {2.03e-9, 'm^2'};
+end
+
+
+annotations
+    P: Side = left;
+    A: Side = right;
+    B: Side = right;
+    T: Side = left;
+    S: Side = top;
+end
+
+components (ExternalAccess = none)
+    P_A = foundation.two_phase_fluid.elements.local_restriction;
+    P_B = foundation.two_phase_fluid.elements.local_restriction;
+    A_T = foundation.two_phase_fluid.elements.local_restriction;
+    B_T = foundation.two_phase_fluid.elements.local_restriction;
+end
+
+connections
+    connect(P, P_A.A);
+    connect(P_A.B, A);
+
+    connect(P, P_B.A);
+    connect(P_B.B, B);
+
+    connect(A, A_T.A);
+    connect(A_T.B, T);
+
+    connect(B, B_T.A);
+    connect(B_T.B, T);
+end
+
+intermediates (Access = private, ExternalAccess = none)
+
+    % Positive-direction spool opening
+    f_pos = if ge(S, spool_open), ...
+                1 ...
+            else ...
+                if ge(S, spool_closed), ...
+                    (S - spool_closed) / ...
+                    (spool_open - spool_closed) ...
+                else ...
+                    0 ...
+                end ...
+            end;
+
+    % Negative-direction spool opening
+    f_neg = if le(S, -spool_open), ...
+                1 ...
+            else ...
+                if le(S, -spool_closed), ...
+                    (-S - spool_closed) / ...
+                    (spool_open - spool_closed) ...
+                else ...
+                    0 ...
+                end ...
+            end;
+
+    A_pos = min_area + ...
+        (max_area - min_area)*f_pos;
+
+    A_neg = min_area + ...
+        (max_area - min_area)*f_neg;
+
+end
+
+equations
+
+    % Generate the four valve opening areas.
+    area_PA == A_pos;
+    area_BT == A_pos;
+
+    area_PB == A_neg;
+    area_AT == A_neg;
+
+    % Parameter consistency
+    assert(min_area > 0);
+    assert(max_area > min_area);
+
+    assert(spool_closed >= 0);
+    assert(spool_open > spool_closed);
+
+    assert(maximum_Cv > 0);
+    assert(leakage_fraction > 0);
+    assert(leakage_fraction < 1);
+
+    assert(smoothing_factor > 0);
+    assert(laminar_pressure_ratio > 0);
+    assert(laminar_pressure_ratio < 1);
+
+end
+
+end

@@ -1,0 +1,35 @@
+component test_two_path_valve_2p
+% Diagnostic two-orifice valve wrapper
+
+nodes
+    P = foundation.two_phase_fluid.two_phase_fluid;
+    B = foundation.two_phase_fluid.two_phase_fluid;
+    T = foundation.two_phase_fluid.two_phase_fluid;
+end
+
+inputs
+    S_B = {5e-3, 'm'};
+    S_T = {5e-3, 'm'};
+end
+
+components (ExternalAccess = none)
+
+    P_B = fluids.two_phase_fluid.valves_orifices.orifice;
+    B_T = fluids.two_phase_fluid.valves_orifices.orifice;
+
+end
+
+connections
+
+    connect(P, P_B.A);
+    connect(P_B.B, B);
+
+    connect(B, B_T.A);
+    connect(B_T.B, T);
+
+    connect(S_B, P_B.S);
+    connect(S_T, B_T.S);
+
+end
+
+end
