@@ -1,0 +1,108 @@
+component test_four_orifice_valve
+% Two-Path 3-Position Directional Valve (2P)
+%
+% P = common inlet
+% A = turbine branch
+% B = bypass branch
+%
+% S = spool displacement
+%
+% Positive spool:
+%   P -> A open
+%   P -> B closed
+%
+% Neutral:
+%   P -> A closed
+%   P -> B closed
+%
+% Negative spool:
+%   P -> A closed
+%   P -> B open
+
+nodes
+    P = foundation.two_phase_fluid.two_phase_fluid; % P
+    A = foundation.two_phase_fluid.two_phase_fluid; % A
+    B = foundation.two_phase_fluid.two_phase_fluid; % B
+end
+
+inputs
+    S = {0, 'm'}; % Overall spool displacement
+end
+
+parameters
+    spool_deadband = {2.5e-3, 'm'};
+end
+
+components (ExternalAccess = none)
+
+    % Turbine path
+    P_A = fluids.two_phase_fluid.valves_orifices.orifice;
+
+    % Bypass path
+    P_B = fluids.two_phase_fluid.valves_orifices.orifice;
+
+    % Positive spool signal
+    pos_sub = foundation.signal.functions.subtract;
+    pos_deadband = foundation.signal.sources.constant( ...
+        constant = spool_deadband);
+
+    % Negative spool signal
+    neg_gain = foundation.signal.functions.gain( ...
+        gain = {-1, '1'});
+    neg_sub = foundation.signal.functions.subtract;
+    neg_deadband = foundation.signal.sources.constant( ...
+        constant = spool_deadband);
+
+end
+
+connections
+
+    % =========================================================
+    % HYDRAULIC CONNECTIONS
+    % =========================================================
+
+    % Turbine path: P -> A
+    connect(P, P_A.A);
+    connect(P_A.B, A);
+
+    % Bypass path: P -> B
+    connect(P, P_B.A);
+    connect(P_B.B, B);
+
+    % =========================================================
+    % POSITIVE SPOOL
+    %
+    % S_pos = S - 2.5 mm
+    %
+    % Positive spool opens the turbine path
+    % =========================================================
+
+    connect(S, pos_sub.I1);
+    connect(pos_deadband.O, pos_sub.I2);
+
+    connect(pos_sub.O, P_A.S);
+
+    % =========================================================
+    % NEGATIVE SPOOL
+    %
+    % S_neg = -S - 2.5 mm
+    %
+    % Negative spool opens the bypass path
+    % =========================================================
+
+    connect(S, neg_gain.I);
+    connect(neg_gain.O, neg_sub.I1);
+    connect(neg_deadband.O, neg_sub.I2);
+
+    connect(neg_sub.O, P_B.S);
+
+end
+
+annotations
+    P : Side = left;
+    A : Side = right;
+    B : Side = right;
+    S : Side = top;
+end
+
+end

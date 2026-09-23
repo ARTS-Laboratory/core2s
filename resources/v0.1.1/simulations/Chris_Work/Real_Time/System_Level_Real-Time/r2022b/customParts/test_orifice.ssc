@@ -1,0 +1,102 @@
+component test_orifice
+% 4-Way 3-Position Directional Valve (2P)
+
+nodes
+    P = foundation.two_phase_fluid.two_phase_fluid; % P
+    A = foundation.two_phase_fluid.two_phase_fluid; % A
+    B = foundation.two_phase_fluid.two_phase_fluid; % B
+    T = foundation.two_phase_fluid.two_phase_fluid; % T
+end
+
+inputs
+    S = {0, 'm'};
+end
+
+parameters
+    spool_deadband = {2.5e-3, 'm'};
+end
+
+components (ExternalAccess = none)
+
+    % Four 2P orifices
+    P_A = fluids.two_phase_fluid.valves_orifices.orifice;
+    P_B = fluids.two_phase_fluid.valves_orifices.orifice;
+    A_T = fluids.two_phase_fluid.valves_orifices.orifice;
+    B_T = fluids.two_phase_fluid.valves_orifices.orifice;
+
+    % Positive spool signal
+    pos_sub = foundation.signal.functions.subtract;
+    pos_deadband = foundation.signal.sources.constant( ...
+        constant = spool_deadband);
+
+    % Negative spool signal
+    neg_gain = foundation.signal.functions.gain( ...
+        gain = {-1, '1'});
+    neg_sub = foundation.signal.functions.subtract;
+    neg_deadband = foundation.signal.sources.constant( ...
+        constant = spool_deadband);
+
+end
+
+connections
+
+    % =========================================================
+    % HYDRAULIC CONNECTIONS
+    % =========================================================
+
+    % P -> A
+    connect(P, P_A.A);
+    connect(P_A.B, A);
+
+    % P -> B
+    connect(P, P_B.A);
+    connect(P_B.B, B);
+
+    % A -> T
+    connect(A, A_T.A);
+    connect(A_T.B, T);
+
+    % B -> T
+    connect(B, B_T.A);
+    connect(B_T.B, T);
+
+    % =========================================================
+    % POSITIVE SPOOL
+    %
+    % S_pos = S - 2.5 mm
+    %
+    % Used by P-A and B-T
+    % =========================================================
+
+    connect(S, pos_sub.I1);
+    connect(pos_deadband.O, pos_sub.I2);
+
+    connect(pos_sub.O, P_A.S);
+    connect(pos_sub.O, B_T.S);
+
+    % =========================================================
+    % NEGATIVE SPOOL
+    %
+    % S_neg = -S - 2.5 mm
+    %
+    % Used by P-B and A-T
+    % =========================================================
+
+    connect(S, neg_gain.I);
+    connect(neg_gain.O, neg_sub.I1);
+    connect(neg_deadband.O, neg_sub.I2);
+
+    connect(neg_sub.O, P_B.S);
+    connect(neg_sub.O, A_T.S);
+
+end
+
+annotations
+    P: Side = left;
+    A: Side = right;
+    B: Side = right;
+    T: Side = left;
+    S: Side = top;
+end
+
+end

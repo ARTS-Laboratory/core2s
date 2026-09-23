@@ -1,0 +1,319 @@
+component custom_turbine_2p
+% HP Turbine (2P) - Layer 2
+% R2022b custom two-phase turbine
+%
+% This version:
+%   - Uses the validated pressure-dependent flow relation
+%   - Conserves mass
+%   - Extracts shaft work using a pressure-ratio-based enthalpy drop
+%   - Reports turbine power
+%
+% Pressure-ratio energy model:
+%
+%   rp = pB/pA
+%
+%   dh_ideal =
+%       dh_ref * (1-rp)/(1-rp_nom)
+%
+%   dh_actual = eta_t * dh_ideal
+%
+%   hB = hA - dh_actual
+%
+%   Wdot = mdot * dh_actual
+
+nodes
+    A = foundation.two_phase_fluid.two_phase_fluid;
+    B = foundation.two_phase_fluid.two_phase_fluid;
+end
+
+inputs
+    % No additional turbine control input is required.
+    % Turbine flow is controlled by the upstream valve.
+end
+
+outputs
+    power_out = {0, 'kW'};          % Turbine shaft power
+    enthalpy_drop_out = {0, 'kJ/kg'}; % Actual specific enthalpy drop
+end
+
+parameters
+    % =========================================================
+    % MASS-FLOW CHARACTERISTICS
+    % =========================================================
+
+    pA_nom  = {3.5, 'MPa'};         % Nominal inlet pressure
+    pB_nom  = {1.0, 'MPa'};         % Nominal outlet pressure
+    mdot_nom = {1.5, 'kg/s'};       % Nominal mass flow rate
+    vA_nom  = {0.085, 'm^3/kg'};    % Nominal inlet specific volume
+
+    dp_min = {1, 'kPa'};            % Minimum forward pressure difference
+
+
+    % =========================================================
+    % TURBINE ENERGY EXTRACTION
+    % =========================================================
+
+    turbine_efficiency = {0.75, '1'};
+
+    % Reference ideal enthalpy drop at nominal pressure ratio
+    reference_enthalpy_drop = {500, 'kJ/kg'};
+
+end
+
+variables (Access = protected)
+
+    % Through variables
+    mdot_A = {0, 'kg/s'};
+    mdot_B = {0, 'kg/s'};
+
+    Phi_A  = {0, 'kW'};
+    Phi_B  = {0, 'kW'};
+
+    % Port specific internal energies
+    u_A = {1500, 'kJ/kg'};
+    u_B = {1500, 'kJ/kg'};
+
+    % Turbine thermodynamic quantities
+    h_A_calc = {1500, 'kJ/kg'};
+    h_B_calc = {1500, 'kJ/kg'};
+
+    pressure_ratio = {1, '1'};
+
+    reference_pressure_ratio = {1, '1'};
+
+    ideal_enthalpy_drop = {0, 'kJ/kg'};
+    actual_enthalpy_drop = {0, 'kJ/kg'};
+
+    turbine_power = {0, 'kW'};
+
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi -> *;
+    Phi_B  : B.Phi -> *;
+end
+
+intermediates (Access = private, ExternalAccess = none)
+
+    % =========================================================
+    % PORT PRESSURES
+    % =========================================================
+
+    p_A = A.p;
+    p_B = B.p;
+
+
+    % =========================================================
+    % NORMALIZED INTERNAL ENERGY
+    % =========================================================
+
+    unorm_A = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_A, p_A, ...
+        A.u_min, A.u_max, ...
+        A.p_TLU, A.u_sat_liq_TLU, A.u_sat_vap_TLU);
+
+    unorm_B = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_B, p_B, ...
+        A.u_min, A.u_max, ...
+        A.p_TLU, A.u_sat_liq_TLU, A.u_sat_vap_TLU);
+
+
+    % =========================================================
+    % SPECIFIC VOLUME
+    % =========================================================
+
+    v_A = tablelookup( ...
+        A.unorm_TLU, A.p_TLU, A.v_TLU, ...
+        unorm_A, p_A, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+    v_B = tablelookup( ...
+        A.unorm_TLU, A.p_TLU, A.v_TLU, ...
+        unorm_B, p_B, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+
+    % =========================================================
+    % SPECIFIC ENTHALPY
+    % =========================================================
+
+    h_A = u_A + p_A*v_A;
+
+    h_B = u_B + p_B*v_B;
+
+
+    % =========================================================
+    % FORWARD PRESSURE DIFFERENCE
+    % =========================================================
+
+    Dp = p_A - p_B;
+
+
+    % =========================================================
+    % PRESSURE RATIO
+    %
+    % pB/pA
+    %
+    % Only meaningful for forward turbine operation.
+    % =========================================================
+
+    pressure_ratio_raw = p_B / p_A;
+
+
+    % Prevent pathological negative/greater-than-one ratios from
+    % contaminating the energy calculation during the diagnostic
+    % startup state.
+
+    pressure_ratio_calc = simscape.function.limit( ...
+        pressure_ratio_raw, ...
+        0, ...
+        1, ...
+        false);
+
+
+    % =========================================================
+    % NOMINAL PRESSURE RATIO
+    % =========================================================
+
+    reference_pressure_ratio_calc = ...
+        pB_nom / pA_nom;
+
+
+    % =========================================================
+    % IDEAL ENTHALPY DROP
+    %
+    % Scale reference enthalpy drop according to pressure ratio.
+    % =========================================================
+
+    ideal_enthalpy_drop = ...
+        reference_enthalpy_drop * ...
+        (1 - pressure_ratio) / ...
+        (1 - reference_pressure_ratio);
+
+
+    % =========================================================
+    % ACTUAL ENTHALPY DROP
+    % =========================================================
+
+    actual_enthalpy_drop_ = ...
+        turbine_efficiency * ideal_enthalpy_drop;
+
+
+end
+
+equations
+
+    % =========================================================
+    % CONNECT INTERNAL ENERGY VARIABLES TO PHYSICAL PORTS
+    % =========================================================
+
+    u_A == A.u;
+    u_B == B.u;
+
+
+    % =========================================================
+    % MASS-FLOW RELATION
+    %
+    % THIS IS THE SAME RELATION FROM THE WORKING VERSION.
+    % =========================================================
+
+    if Dp > dp_min
+
+        mdot_A == mdot_nom * sqrt( ...
+            (p_A^2 - p_B^2) / ...
+            (pA_nom^2 - pB_nom^2));
+
+    else
+
+        mdot_A == {0, 'kg/s'};
+
+    end
+
+
+    % =========================================================
+    % MASS CONSERVATION
+    % =========================================================
+
+    mdot_A + mdot_B == 0;
+
+
+    % =========================================================
+    % TURBINE ENTHALPY DROP
+    % =========================================================
+
+    h_A_calc == h_A;
+
+    h_B_calc == h_A_calc - actual_enthalpy_drop;
+
+
+    % =========================================================
+    % ENERGY BALANCE
+    %
+    % The difference between inlet and outlet enthalpy becomes
+    % turbine shaft power.
+    % =========================================================
+
+    turbine_power == abs(mdot_A) * actual_enthalpy_drop;
+
+
+    % Energy flow balance including extracted shaft work
+    Phi_A + Phi_B + turbine_power == 0;
+
+
+    % =========================================================
+    % OUTPUTS
+    % =========================================================
+
+    power_out == turbine_power;
+
+    enthalpy_drop_out == actual_enthalpy_drop;
+
+
+end
+
+% =============================================================
+% ENERGY CONVECTION AT PORTS A AND B
+% =============================================================
+
+components (ExternalAccess = none)
+
+    convection_A = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+    convection_B = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+end
+
+connections
+
+    connect(A, convection_A.port);
+    connect(B, convection_B.port);
+
+end
+
+equations
+
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+
+
+    % =========================================================
+    % TOTAL ENTHALPY AT THE PORTS
+    % =========================================================
+
+    convection_A.ht_I == h_A_calc;
+    convection_B.ht_I == h_B_calc;
+
+end
+
+end

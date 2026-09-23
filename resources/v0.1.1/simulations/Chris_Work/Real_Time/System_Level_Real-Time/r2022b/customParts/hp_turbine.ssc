@@ -1,0 +1,158 @@
+component hp_turbine
+% HP Turbine (2P) - Layer 1
+% R2022b custom two-phase turbine prototype
+%
+% This first version:
+%   - Uses a pressure-dependent flow relation
+%   - Conserves mass
+%   - Conserves total energy
+%   - Does NOT extract shaft work yet
+%   - Is intended to establish a stable 2P hydraulic connection
+%
+% Nominal point based on the MathWorks Rankine Cycle HP turbine:
+%   pA_nom   = 3.5 MPa
+%   pB_nom   = 1.0 MPa
+%   mdot_nom = 1.5 kg/s
+%   vA_nom   = 0.085 m^3/kg
+
+nodes
+    A = foundation.two_phase_fluid.two_phase_fluid;
+    B = foundation.two_phase_fluid.two_phase_fluid;
+end
+
+parameters
+    pA_nom  = {3.5, 'MPa'};       % Nominal inlet pressure
+    pB_nom  = {1.0, 'MPa'};       % Nominal outlet pressure
+    mdot_nom = {1.5, 'kg/s'};     % Nominal mass flow rate
+    vA_nom  = {0.085, 'm^3/kg'};  % Nominal inlet specific volume
+
+    dp_min = {1, 'kPa'};           % Minimum forward pressure difference
+end
+
+variables (Access = protected)
+    % Through variables
+    mdot_A = {0, 'kg/s'};          % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'};          % Mass flow rate into port B
+    Phi_A  = {0, 'kW'};            % Energy flow rate into port A
+    Phi_B  = {0, 'kW'};            % Energy flow rate into port B
+
+    % Port specific internal energies
+    u_A = {1500, 'kJ/kg'};
+    u_B = {1500, 'kJ/kg'};
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+end
+
+intermediates (Access = private, ExternalAccess = none)
+
+    % Port pressures
+    p_A = A.p;
+    p_B = B.p;
+
+    % Match the structure used by the native R2022b
+    % two-phase components.
+    unorm_A = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_A, p_A, ...
+        A.u_min, A.u_max, ...
+        A.p_TLU, A.u_sat_liq_TLU, A.u_sat_vap_TLU);
+
+    unorm_B = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_B, p_B, ...
+        A.u_min, A.u_max, ...
+        A.p_TLU, A.u_sat_liq_TLU, A.u_sat_vap_TLU);
+
+    % Specific volume from the R2022b 2P property tables
+    v_A = tablelookup( ...
+        A.unorm_TLU, A.p_TLU, A.v_TLU, ...
+        unorm_A, p_A, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+    v_B = tablelookup( ...
+        A.unorm_TLU, A.p_TLU, A.v_TLU, ...
+        unorm_B, p_B, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+    % Specific enthalpy
+    h_A = u_A + p_A*v_A;
+    h_B = u_B + p_B*v_B;
+
+    % Forward pressure difference
+    Dp = p_A - p_B;
+
+end
+
+equations
+
+    % Connect local protected variables to the physical 2P ports
+    u_A == A.u;
+    u_B == B.u;
+
+    % Mass-flow relation
+    %
+    % Only evaluate the square-root expression when there is
+    % a positive pressure difference. Otherwise the turbine is
+    % treated as having zero forward flow.
+    if Dp > dp_min
+
+        mdot_A == mdot_nom * sqrt( ...
+            (p_A^2 - p_B^2) / ...
+            (pA_nom^2 - pB_nom^2));
+
+    else
+
+        mdot_A == {0, 'kg/s'};
+
+    end
+
+    % Mass conservation
+    mdot_A + mdot_B == 0;
+
+    % No turbine work in Layer 1:
+    % Energy is simply transported through the component.
+    Phi_A + Phi_B == 0;
+
+end
+
+% Internal components that calculate energy convection
+% at ports A and B.
+components (ExternalAccess = none)
+
+    convection_A = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+    convection_B = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+end
+
+connections
+
+    connect(A, convection_A.port);
+    connect(B, convection_B.port);
+
+end
+
+equations
+
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+
+    % Equal specific total enthalpy at both ports for
+    % the initial zero-work diagnostic version.
+    convection_A.ht_I == convection_B.ht_I;
+
+end
+
+end
