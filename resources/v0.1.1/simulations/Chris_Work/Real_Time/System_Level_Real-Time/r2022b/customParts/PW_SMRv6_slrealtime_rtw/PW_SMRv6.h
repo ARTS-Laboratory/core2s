@@ -7,9 +7,9 @@
  *
  * Code generation for model "PW_SMRv6".
  *
- * Model version              : 1.28
+ * Model version              : 1.29
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C++ source code generated on : Mon Sep 21 17:54:31 2026
+ * C++ source code generated on : Tue Sep 22 12:13:45 2026
  *
  * Target selection: slrealtime.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -116,6 +116,12 @@ struct B_PW_SMRv6_T {
   real_T RESHAPE_e;                    /* '<S28>/RESHAPE' */
   real_T RESHAPE_j;                    /* '<S29>/RESHAPE' */
   real_T RESHAPE_b;                    /* '<S30>/RESHAPE' */
+  real_T RESHAPE_c;                    /* '<S36>/RESHAPE' */
+  real_T Relay;                        /* '<S22>/Relay' */
+  real_T OUTPUT_1_2[2];                /* '<S94>/OUTPUT_1_2' */
+  real_T RESHAPE_m;                    /* '<S152>/RESHAPE' */
+  real_T RESHAPE_g;                    /* '<S153>/RESHAPE' */
+  real_T RESHAPE_dm;                   /* '<S154>/RESHAPE' */
   real_T OUTPUT_1_0;                   /* '<S94>/OUTPUT_1_0' */
   real_T RESHAPE_f;                    /* '<S32>/RESHAPE' */
   real_T RESHAPE_fr;                   /* '<S33>/RESHAPE' */
@@ -123,14 +129,8 @@ struct B_PW_SMRv6_T {
   real_T RESHAPE_fu;                   /* '<S35>/RESHAPE' */
   real_T RESHAPE_jn;                   /* '<S39>/RESHAPE' */
   real_T RESHAPE_b4;                   /* '<S40>/RESHAPE' */
-  real_T RESHAPE_g;                    /* '<S37>/RESHAPE' */
+  real_T RESHAPE_gx;                   /* '<S37>/RESHAPE' */
   real_T RESHAPE_e0;                   /* '<S25>/RESHAPE' */
-  real_T RESHAPE_c;                    /* '<S36>/RESHAPE' */
-  real_T Relay;                        /* '<S22>/Relay' */
-  real_T OUTPUT_1_2[2];                /* '<S94>/OUTPUT_1_2' */
-  real_T RESHAPE_m;                    /* '<S152>/RESHAPE' */
-  real_T RESHAPE_gs;                   /* '<S153>/RESHAPE' */
-  real_T RESHAPE_dm;                   /* '<S154>/RESHAPE' */
   int8_T Switch1;                      /* '<S67>/Switch1' */
   int8_T Switch2;                      /* '<S67>/Switch2' */
   int8_T Switch1_i;                    /* '<S121>/Switch1' */
@@ -163,8 +163,8 @@ struct DW_PW_SMRv6_T {
   real_T Integrator_DSTATE_n;          /* '<S130>/Integrator' */
   real_T Filter_DSTATE;                /* '<S125>/Filter' */
   real_T OUTPUT_1_1_Discrete;          /* '<S94>/OUTPUT_1_1' */
-  real_T OUTPUT_1_0_Discrete;          /* '<S94>/OUTPUT_1_0' */
   real_T OUTPUT_1_2_Discrete;          /* '<S94>/OUTPUT_1_2' */
+  real_T OUTPUT_1_0_Discrete;          /* '<S94>/OUTPUT_1_0' */
   void* STATE_1_Simulator;             /* '<S94>/STATE_1' */
   void* STATE_1_SimData;               /* '<S94>/STATE_1' */
   void* STATE_1_DiagMgr;               /* '<S94>/STATE_1' */
@@ -183,15 +183,6 @@ struct DW_PW_SMRv6_T {
     void *AQHandles;
   } TAQSigLogging_InsertedFor_PSS_h;   /* synthesized block */
 
-  void* OUTPUT_1_0_Simulator;          /* '<S94>/OUTPUT_1_0' */
-  void* OUTPUT_1_0_SimData;            /* '<S94>/OUTPUT_1_0' */
-  void* OUTPUT_1_0_DiagMgr;            /* '<S94>/OUTPUT_1_0' */
-  void* OUTPUT_1_0_ZcLogger;           /* '<S94>/OUTPUT_1_0' */
-  void* OUTPUT_1_0_TsInfo;             /* '<S94>/OUTPUT_1_0' */
-  struct {
-    void *AQHandles;
-  } TAQSigLogging_InsertedFor_PSS_n;   /* synthesized block */
-
   void* OUTPUT_1_2_Simulator;          /* '<S94>/OUTPUT_1_2' */
   void* OUTPUT_1_2_SimData;            /* '<S94>/OUTPUT_1_2' */
   void* OUTPUT_1_2_DiagMgr;            /* '<S94>/OUTPUT_1_2' */
@@ -201,15 +192,24 @@ struct DW_PW_SMRv6_T {
     void *AQHandles;
   } TAQSigLogging_InsertedFor_PSS_i;   /* synthesized block */
 
+  void* OUTPUT_1_0_Simulator;          /* '<S94>/OUTPUT_1_0' */
+  void* OUTPUT_1_0_SimData;            /* '<S94>/OUTPUT_1_0' */
+  void* OUTPUT_1_0_DiagMgr;            /* '<S94>/OUTPUT_1_0' */
+  void* OUTPUT_1_0_ZcLogger;           /* '<S94>/OUTPUT_1_0' */
+  void* OUTPUT_1_0_TsInfo;             /* '<S94>/OUTPUT_1_0' */
+  struct {
+    void *AQHandles;
+  } TAQSigLogging_InsertedFor_PSS_n;   /* synthesized block */
+
   int_T STATE_1_Modes[163];            /* '<S94>/STATE_1' */
   int_T OUTPUT_1_1_Modes;              /* '<S94>/OUTPUT_1_1' */
-  int_T OUTPUT_1_0_Modes;              /* '<S94>/OUTPUT_1_0' */
   int_T OUTPUT_1_2_Modes;              /* '<S94>/OUTPUT_1_2' */
+  int_T OUTPUT_1_0_Modes;              /* '<S94>/OUTPUT_1_0' */
   boolean_T STATE_1_FirstOutput;       /* '<S94>/STATE_1' */
   boolean_T OUTPUT_1_1_FirstOutput;    /* '<S94>/OUTPUT_1_1' */
-  boolean_T OUTPUT_1_0_FirstOutput;    /* '<S94>/OUTPUT_1_0' */
   boolean_T Relay_Mode;                /* '<S22>/Relay' */
   boolean_T OUTPUT_1_2_FirstOutput;    /* '<S94>/OUTPUT_1_2' */
+  boolean_T OUTPUT_1_0_FirstOutput;    /* '<S94>/OUTPUT_1_0' */
 };
 
 /* Parameters (default storage) */

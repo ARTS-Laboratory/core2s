@@ -1,0 +1,339 @@
+component custom_turbine_2p_v2
+% HP Turbine (2P) - Layer 2 Diagnostic Version
+% R2022b custom two-phase turbine
+%
+% This version is based directly on the existing custom_turbine_2p
+% component.
+%
+% Change from the previous version:
+%   The pressure-dependent mass-flow calculation protects the
+%   square-root argument from becoming negative during nonlinear
+%   solver trial states.
+%
+% Energy extraction model:
+%
+%   rp = pB/pA
+%
+%   dh_ideal =
+%       dh_ref * (1-rp)/(1-rp_nom)
+%
+%   dh_actual = eta_t * dh_ideal
+%
+%   hB = hA - dh_actual
+%
+% The present version retains the existing analytical energy model.
+%
+% When the pressure difference is not sufficient for forward flow,
+% turbine mass flow and turbine enthalpy extraction are both set to
+% zero.
+
+nodes
+    A = foundation.two_phase_fluid.two_phase_fluid; % Inlet
+    B = foundation.two_phase_fluid.two_phase_fluid; % Outlet
+end
+
+outputs
+    power_out = {0, 'kW'};
+    enthalpy_drop_out = {0, 'kJ/kg'};
+end
+
+parameters
+
+    % =========================================================
+    % MASS-FLOW CHARACTERISTICS
+    % =========================================================
+
+    pA_nom = {3.5, 'MPa'};
+    pB_nom = {1.0, 'MPa'};
+    mdot_nom = {1.5, 'kg/s'};
+    vA_nom = {0.085, 'm^3/kg'};
+
+    dp_min = {1, 'kPa'};
+
+
+    % =========================================================
+    % TURBINE ENERGY EXTRACTION
+    % =========================================================
+
+    turbine_efficiency = {0.75, '1'};
+
+    reference_enthalpy_drop = {500, 'kJ/kg'};
+
+end
+
+
+% =============================================================
+% SOLVER VARIABLES
+% =============================================================
+
+variables (Access = protected)
+
+    mdot_A = {0, 'kg/s'};
+    mdot_B = {0, 'kg/s'};
+
+    Phi_A = {0, 'kW'};
+    Phi_B = {0, 'kW'};
+
+    u_A = {1500, 'kJ/kg'};
+
+end
+
+
+% =============================================================
+% BRANCHES
+% =============================================================
+
+branches
+
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+
+    Phi_A : A.Phi -> *;
+    Phi_B : B.Phi -> *;
+
+end
+
+
+% =============================================================
+% INTERNAL ENERGY CONVECTION COMPONENTS
+% =============================================================
+
+components (ExternalAccess = none)
+
+    convection_A = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+    convection_B = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+end
+
+
+% =============================================================
+% INTERMEDIATE CALCULATIONS
+% =============================================================
+
+intermediates (Access = private, ExternalAccess = none)
+
+    % ---------------------------------------------------------
+    % PORT PRESSURES
+    % ---------------------------------------------------------
+
+    p_A = A.p;
+    p_B = B.p;
+
+
+    % ---------------------------------------------------------
+    % INLET INTERNAL ENERGY
+    % ---------------------------------------------------------
+
+    u_A_port = A.u;
+
+
+    % ---------------------------------------------------------
+    % NORMALIZED INLET INTERNAL ENERGY
+    % ---------------------------------------------------------
+
+    unorm_A = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_A_port, ...
+        p_A, ...
+        A.u_min, ...
+        A.u_max, ...
+        A.p_TLU, ...
+        A.u_sat_liq_TLU, ...
+        A.u_sat_vap_TLU);
+
+
+    % ---------------------------------------------------------
+    % INLET SPECIFIC VOLUME
+    % ---------------------------------------------------------
+
+    v_A = tablelookup( ...
+        A.unorm_TLU, ...
+        A.p_TLU, ...
+        A.v_TLU, ...
+        unorm_A, ...
+        p_A, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+
+    % ---------------------------------------------------------
+    % INLET SPECIFIC ENTHALPY
+    % ---------------------------------------------------------
+
+    h_A = u_A_port + p_A*v_A;
+
+
+    % ---------------------------------------------------------
+    % FORWARD PRESSURE DIFFERENCE
+    % ---------------------------------------------------------
+
+    Dp = p_A - p_B;
+
+
+    % ---------------------------------------------------------
+    % PRESSURE RATIO
+    % ---------------------------------------------------------
+
+    pressure_ratio_raw = p_B/p_A;
+
+    pressure_ratio_calc = simscape.function.limit( ...
+        pressure_ratio_raw, ...
+        0, ...
+        1, ...
+        false);
+
+
+    % ---------------------------------------------------------
+    % NOMINAL PRESSURE RATIO
+    % ---------------------------------------------------------
+
+    reference_pressure_ratio_calc = ...
+        pB_nom/pA_nom;
+
+
+    % ---------------------------------------------------------
+    % IDEAL ENTHALPY DROP
+    % ---------------------------------------------------------
+
+    ideal_enthalpy_drop_calc = ...
+        reference_enthalpy_drop * ...
+        (1 - pressure_ratio_calc) / ...
+        (1 - reference_pressure_ratio_calc);
+
+
+    % ---------------------------------------------------------
+    % EFFICIENCY-CORRECTED ENTHALPY DROP
+    % ---------------------------------------------------------
+
+    actual_enthalpy_drop_calc = ...
+        turbine_efficiency * ...
+        ideal_enthalpy_drop_calc;
+
+
+    % ---------------------------------------------------------
+    % ACTIVATE TURBINE ENERGY EXTRACTION ONLY WHEN FORWARD FLOW
+    % IS PERMITTED BY THE PRESSURE CONDITION.
+    % ---------------------------------------------------------
+
+    enthalpy_drop_active = ...
+        if gt(Dp, dp_min), ...
+            actual_enthalpy_drop_calc ...
+        else ...
+            {0, 'kJ/kg'} ...
+        end;
+
+
+    % ---------------------------------------------------------
+    % TARGET OUTLET TOTAL SPECIFIC ENTHALPY
+    % ---------------------------------------------------------
+
+    h_B_target = ...
+        h_A - enthalpy_drop_active;
+
+
+    % ---------------------------------------------------------
+    % TURBINE POWER
+    % ---------------------------------------------------------
+
+    turbine_power_calc = ...
+        abs(mdot_A) * enthalpy_drop_active;
+
+end
+
+
+% =============================================================
+% PHYSICAL CONNECTIONS
+% =============================================================
+
+connections
+
+    connect(A, convection_A.port);
+    connect(B, convection_B.port);
+
+end
+
+
+% =============================================================
+% EQUATIONS
+% =============================================================
+
+equations
+
+    % ---------------------------------------------------------
+    % INTERNAL ENERGY
+    % ---------------------------------------------------------
+
+    u_A == A.u;
+
+
+    % ---------------------------------------------------------
+    % MASS FLOW
+    %
+    % IMPORTANT CHANGE:
+    %
+    % The quantity inside sqrt() is explicitly limited to
+    % nonnegative values.
+    %
+    % This prevents a nonlinear solver trial point with
+    % p_B > p_A from producing sqrt(negative).
+    % ---------------------------------------------------------
+
+    if Dp > dp_min
+
+        mdot_A == mdot_nom * sqrt( ...
+            simscape.function.limit( ...
+                (p_A^2 - p_B^2) / ...
+                (pA_nom^2 - pB_nom^2), ...
+                0, ...
+                1e6, ...
+                false));
+
+    else
+
+        mdot_A == {0, 'kg/s'};
+
+    end
+
+
+    % ---------------------------------------------------------
+    % MASS CONSERVATION
+    % ---------------------------------------------------------
+
+    mdot_A + mdot_B == 0;
+
+
+    % ---------------------------------------------------------
+    % ENERGY CONVECTION
+    % ---------------------------------------------------------
+
+    convection_A.mdot == mdot_A;
+    convection_A.Phi == Phi_A;
+
+    convection_B.mdot == mdot_B;
+    convection_B.Phi == Phi_B;
+
+
+    % ---------------------------------------------------------
+    % TURBINE ENERGY EXTRACTION
+    % ---------------------------------------------------------
+
+    convection_A.ht_I == h_A;
+
+    convection_B.ht_I == h_B_target;
+
+
+    % ---------------------------------------------------------
+    % DIAGNOSTIC OUTPUTS
+    % ---------------------------------------------------------
+
+    power_out == turbine_power_calc;
+
+    enthalpy_drop_out == enthalpy_drop_active;
+
+end
+
+end

@@ -1,0 +1,198 @@
+component directional_valve_4way_3position_2p
+% 4-Way 3-Position Directional Valve (2P)
+%
+% P = common inlet
+% A = turbine path
+% B = bypass path
+% T = common outlet
+%
+% Positive spool:
+%   P -> A
+%   B -> T
+%
+% Negative spool:
+%   P -> B
+%   A -> T
+%
+% This version includes a small pre-opening position on the
+% positive/turbine-side orifices. The purpose is to prevent the
+% turbine-side branch from being completely isolated prior to
+% the turbine transition.
+%
+% Turbine pre-opening position:
+%   5e-5 m = 0.05 mm
+%
+% Full orifice travel:
+%   5e-3 m = 5 mm
+
+nodes
+    P = foundation.two_phase_fluid.two_phase_fluid; % P
+    A = foundation.two_phase_fluid.two_phase_fluid; % A
+    B = foundation.two_phase_fluid.two_phase_fluid; % B
+    T = foundation.two_phase_fluid.two_phase_fluid; % T
+end
+
+inputs
+    S = {0, 'm'}; % Overall spool displacement
+end
+
+parameters
+
+    % =========================================================
+    % SPOOL GEOMETRY
+    % =========================================================
+
+    spool_deadband = {2.5e-3, 'm'};
+
+    % Minimum turbine-side opening while the turbine path is
+    % otherwise considered closed.
+    turbine_preopen = {5e-5, 'm'};
+
+    % Full travel of the R2022b Orifice control member.
+    orifice_travel = {5e-3, 'm'};
+
+end
+
+
+components (ExternalAccess = none)
+
+    % =========================================================
+    % FOUR 2P ORIFICES
+    % =========================================================
+
+    P_A = fluids.two_phase_fluid.valves_orifices.orifice;
+    P_B = fluids.two_phase_fluid.valves_orifices.orifice;
+    A_T = fluids.two_phase_fluid.valves_orifices.orifice;
+    B_T = fluids.two_phase_fluid.valves_orifices.orifice;
+
+
+    % =========================================================
+    % POSITIVE SPOOL / TURBINE PATH
+    % =========================================================
+
+    pos_sub = foundation.signal.functions.subtract;
+
+    pos_deadband = foundation.signal.sources.constant( ...
+        constant = spool_deadband);
+
+
+    % Convert physical spool displacement to normalized
+    % dimensionless orifice travel.
+    pos_to_normalized = foundation.signal.functions.gain( ...
+        gain = {1, '1/m'});
+
+
+    % Clamp the turbine-side orifice command to:
+    %
+    %   turbine_preopen/orifice_travel
+    %
+    % at the lower end, and:
+    %
+    %   1
+    %
+    % at the upper end.
+    pos_sat = foundation.signal.nonlinear.saturation( ...
+        lower_limit = turbine_preopen/orifice_travel, ...
+        upper_limit = {1, '1'});
+
+
+    % Convert normalized travel back to physical displacement.
+    normalized_to_pos = foundation.signal.functions.gain( ...
+        gain = orifice_travel);
+
+
+    % =========================================================
+    % NEGATIVE SPOOL / BYPASS PATH
+    % =========================================================
+
+    neg_gain = foundation.signal.functions.gain( ...
+        gain = {-1, '1'});
+
+    neg_sub = foundation.signal.functions.subtract;
+
+    neg_deadband = foundation.signal.sources.constant( ...
+        constant = spool_deadband);
+
+end
+
+
+connections
+
+    % =========================================================
+    % HYDRAULIC CONNECTIONS
+    % =========================================================
+
+    % P -> A
+    connect(P, P_A.A);
+    connect(P_A.B, A);
+
+    % P -> B
+    connect(P, P_B.A);
+    connect(P_B.B, B);
+
+    % A -> T
+    connect(A, A_T.A);
+    connect(A_T.B, T);
+
+    % B -> T
+    connect(B, B_T.A);
+    connect(B_T.B, T);
+
+
+    % =========================================================
+    % POSITIVE SPOOL / TURBINE PATH
+    %
+    % Normal command:
+    %
+    %   S_pos = S - spool_deadband
+    %
+    % Then:
+    %
+    %   meters -> normalized travel -> minimum pre-open
+    %   -> maximum 100% opening -> meters
+    %
+    % The same signal drives P-A and B-T.
+    % =========================================================
+
+    connect(S, pos_sub.I1);
+    connect(pos_deadband.O, pos_sub.I2);
+
+    connect(pos_sub.O, pos_to_normalized.I);
+
+    connect(pos_to_normalized.O, pos_sat.I);
+
+    connect(pos_sat.O, normalized_to_pos.I);
+
+    connect(normalized_to_pos.O, P_A.S);
+    connect(normalized_to_pos.O, B_T.S);
+
+
+    % =========================================================
+    % NEGATIVE SPOOL / BYPASS PATH
+    %
+    % This remains unchanged from the previously validated
+    % configuration.
+    % =========================================================
+
+    connect(S, neg_gain.I);
+    connect(neg_gain.O, neg_sub.I1);
+
+    connect(neg_deadband.O, neg_sub.I2);
+
+    connect(neg_sub.O, P_B.S);
+    connect(neg_sub.O, A_T.S);
+
+end
+
+
+annotations
+
+    P : Side = left;
+    A : Side = right;
+    B : Side = right;
+    T : Side = left;
+    S : Side = top;
+
+end
+
+end

@@ -7,9 +7,9 @@
  *
  * Code generation for model "PW_SMRv6".
  *
- * Model version              : 1.28
+ * Model version              : 1.29
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C++ source code generated on : Mon Sep 21 17:54:31 2026
+ * C++ source code generated on : Tue Sep 22 12:13:45 2026
  *
  * Target selection: slrealtime.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -660,18 +660,35 @@ void PW_SMRv6_step(void)
   /* Reshape: '<S30>/RESHAPE' */
   PW_SMRv6_B.RESHAPE_b = PW_SMRv6_B.OUTPUT_1_1[5];
 
-  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+  /* Reshape: '<S36>/RESHAPE' */
+  PW_SMRv6_B.RESHAPE_c = PW_SMRv6_B.OUTPUT_1_1[11];
+
+  /* Relay: '<S22>/Relay' */
+  minV = PW_SMRv6_B.RESHAPE_c;
+  PW_SMRv6_DW.Relay_Mode = ((minV >= PW_SMRv6_cal->Relay_OnVal) || ((!(minV <=
+    PW_SMRv6_cal->Relay_OffVal)) && PW_SMRv6_DW.Relay_Mode));
+  if (PW_SMRv6_DW.Relay_Mode) {
+    /* Relay: '<S22>/Relay' */
+    PW_SMRv6_B.Relay = PW_SMRv6_cal->Relay_YOn;
+  } else {
+    /* Relay: '<S22>/Relay' */
+    PW_SMRv6_B.Relay = PW_SMRv6_cal->Relay_YOff;
+  }
+
+  /* End of Relay: '<S22>/Relay' */
+
+  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
   simulationData = static_cast<NeslSimulationData *>
-    (PW_SMRv6_DW.OUTPUT_1_0_SimData);
+    (PW_SMRv6_DW.OUTPUT_1_2_SimData);
   time_3 = PW_SMRv6_M->Timing.taskTime0;
   simulationData->mData->mTime.mN = 1;
   simulationData->mData->mTime.mX = &time_3;
   simulationData->mData->mContStates.mN = 0;
   simulationData->mData->mContStates.mX = nullptr;
   simulationData->mData->mDiscStates.mN = 0;
-  simulationData->mData->mDiscStates.mX = &PW_SMRv6_DW.OUTPUT_1_0_Discrete;
+  simulationData->mData->mDiscStates.mX = &PW_SMRv6_DW.OUTPUT_1_2_Discrete;
   simulationData->mData->mModeVector.mN = 0;
-  simulationData->mData->mModeVector.mX = &PW_SMRv6_DW.OUTPUT_1_0_Modes;
+  simulationData->mData->mModeVector.mX = &PW_SMRv6_DW.OUTPUT_1_2_Modes;
   tmp = false;
   simulationData->mData->mFoundZcEvents = tmp;
   simulationData->mData->mIsMajorTimeStep = true;
@@ -704,12 +721,8 @@ void PW_SMRv6_step(void)
   simulationData->mData->mInputValues.mX = &tmp_4[0];
   simulationData->mData->mInputOffsets.mN = 5;
   simulationData->mData->mInputOffsets.mX = &tmp_5[0];
-  simulationData->mData->mOutputs.mN = 1;
-
-  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
-  simulationData->mData->mOutputs.mX = &PW_SMRv6_B.OUTPUT_1_0;
-
-  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+  simulationData->mData->mOutputs.mN = 2;
+  simulationData->mData->mOutputs.mX = &PW_SMRv6_B.OUTPUT_1_2[0];
   simulationData->mData->mTolerances.mN = 0;
   simulationData->mData->mTolerances.mX = nullptr;
   simulationData->mData->mCstateHasChanged = false;
@@ -719,6 +732,91 @@ void PW_SMRv6_step(void)
   isHit_1 = 0;
   simulationData->mData->mSampleHits.mN = 1;
   simulationData->mData->mSampleHits.mX = &isHit_1;
+  simulationData->mData->mIsFundamentalSampleHit = true;
+  simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_2_Simulator);
+  diagnosticManager = static_cast<NeuDiagnosticManager *>
+    (PW_SMRv6_DW.OUTPUT_1_2_DiagMgr);
+  diagnosticTree = neu_diagnostic_manager_get_initial_tree(diagnosticManager);
+  k = ne_simulator_method(simulator, NESL_SIM_OUTPUTS, simulationData,
+    diagnosticManager);
+  if (k != 0) {
+    tmp = error_buffer_is_empty(rtmGetErrorStatus(PW_SMRv6_M));
+    if (tmp) {
+      msg = rtw_diagnostics_msg(diagnosticTree);
+      rtmSetErrorStatus(PW_SMRv6_M, msg);
+    }
+  }
+
+  /* End of SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
+
+  /* Reshape: '<S152>/RESHAPE' */
+  PW_SMRv6_B.RESHAPE_m = PW_SMRv6_B.OUTPUT_1_2[0];
+
+  /* Reshape: '<S153>/RESHAPE' */
+  PW_SMRv6_B.RESHAPE_g = PW_SMRv6_B.OUTPUT_1_2[1];
+
+  /* Reshape: '<S154>/RESHAPE' */
+  PW_SMRv6_B.RESHAPE_dm = PW_SMRv6_B.OUTPUT_1_1[12];
+
+  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+  simulationData = static_cast<NeslSimulationData *>
+    (PW_SMRv6_DW.OUTPUT_1_0_SimData);
+  time_5 = PW_SMRv6_M->Timing.taskTime0;
+  simulationData->mData->mTime.mN = 1;
+  simulationData->mData->mTime.mX = &time_5;
+  simulationData->mData->mContStates.mN = 0;
+  simulationData->mData->mContStates.mX = nullptr;
+  simulationData->mData->mDiscStates.mN = 0;
+  simulationData->mData->mDiscStates.mX = &PW_SMRv6_DW.OUTPUT_1_0_Discrete;
+  simulationData->mData->mModeVector.mN = 0;
+  simulationData->mData->mModeVector.mX = &PW_SMRv6_DW.OUTPUT_1_0_Modes;
+  tmp = false;
+  simulationData->mData->mFoundZcEvents = tmp;
+  simulationData->mData->mIsMajorTimeStep = true;
+  tmp = false;
+  simulationData->mData->mIsSolverAssertCheck = tmp;
+  simulationData->mData->mIsSolverCheckingCIC = false;
+  simulationData->mData->mIsComputingJacobian = false;
+  simulationData->mData->mIsEvaluatingF0 = false;
+  simulationData->mData->mIsSolverRequestingReset = false;
+  simulationData->mData->mIsModeUpdateTimeStep = true;
+  tmp_7[0] = 0;
+  tmp_6[0] = PW_SMRv6_B.INPUT_2_1_1[0];
+  tmp_6[1] = PW_SMRv6_B.INPUT_2_1_1[1];
+  tmp_6[2] = PW_SMRv6_B.INPUT_2_1_1[2];
+  tmp_6[3] = PW_SMRv6_B.INPUT_2_1_1[3];
+  tmp_7[1] = 4;
+  tmp_6[4] = PW_SMRv6_B.INPUT_1_1_1[0];
+  tmp_6[5] = PW_SMRv6_B.INPUT_1_1_1[1];
+  tmp_6[6] = PW_SMRv6_B.INPUT_1_1_1[2];
+  tmp_6[7] = PW_SMRv6_B.INPUT_1_1_1[3];
+  tmp_7[2] = 8;
+  tmp_6[8] = PW_SMRv6_B.INPUT_3_1_1[0];
+  tmp_6[9] = PW_SMRv6_B.INPUT_3_1_1[1];
+  tmp_6[10] = PW_SMRv6_B.INPUT_3_1_1[2];
+  tmp_6[11] = PW_SMRv6_B.INPUT_3_1_1[3];
+  tmp_7[3] = 12;
+  std::memcpy(&tmp_6[12], &PW_SMRv6_B.STATE_1[0], 401U * sizeof(real_T));
+  tmp_7[4] = 413;
+  simulationData->mData->mInputValues.mN = 413;
+  simulationData->mData->mInputValues.mX = &tmp_6[0];
+  simulationData->mData->mInputOffsets.mN = 5;
+  simulationData->mData->mInputOffsets.mX = &tmp_7[0];
+  simulationData->mData->mOutputs.mN = 1;
+
+  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+  simulationData->mData->mOutputs.mX = &PW_SMRv6_B.OUTPUT_1_0;
+
+  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+  simulationData->mData->mTolerances.mN = 0;
+  simulationData->mData->mTolerances.mX = nullptr;
+  simulationData->mData->mCstateHasChanged = false;
+  time_6 = PW_SMRv6_M->Timing.taskTime0;
+  simulationData->mData->mTime.mN = 1;
+  simulationData->mData->mTime.mX = &time_6;
+  isHit_2 = 0;
+  simulationData->mData->mSampleHits.mN = 1;
+  simulationData->mData->mSampleHits.mX = &isHit_2;
   simulationData->mData->mIsFundamentalSampleHit = true;
   simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_0_Simulator);
   diagnosticManager = static_cast<NeuDiagnosticManager *>
@@ -753,108 +851,10 @@ void PW_SMRv6_step(void)
   PW_SMRv6_B.RESHAPE_b4 = PW_SMRv6_B.OUTPUT_1_1[10];
 
   /* Reshape: '<S37>/RESHAPE' */
-  PW_SMRv6_B.RESHAPE_g = PW_SMRv6_B.OUTPUT_1_1[0];
+  PW_SMRv6_B.RESHAPE_gx = PW_SMRv6_B.OUTPUT_1_1[0];
 
   /* Reshape: '<S25>/RESHAPE' */
   PW_SMRv6_B.RESHAPE_e0 = PW_SMRv6_B.OUTPUT_1_1[9];
-
-  /* Reshape: '<S36>/RESHAPE' */
-  PW_SMRv6_B.RESHAPE_c = PW_SMRv6_B.OUTPUT_1_1[11];
-
-  /* Relay: '<S22>/Relay' */
-  minV = PW_SMRv6_B.RESHAPE_c;
-  PW_SMRv6_DW.Relay_Mode = ((minV >= PW_SMRv6_cal->Relay_OnVal) || ((!(minV <=
-    PW_SMRv6_cal->Relay_OffVal)) && PW_SMRv6_DW.Relay_Mode));
-  if (PW_SMRv6_DW.Relay_Mode) {
-    /* Relay: '<S22>/Relay' */
-    PW_SMRv6_B.Relay = PW_SMRv6_cal->Relay_YOn;
-  } else {
-    /* Relay: '<S22>/Relay' */
-    PW_SMRv6_B.Relay = PW_SMRv6_cal->Relay_YOff;
-  }
-
-  /* End of Relay: '<S22>/Relay' */
-
-  /* SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
-  simulationData = static_cast<NeslSimulationData *>
-    (PW_SMRv6_DW.OUTPUT_1_2_SimData);
-  time_5 = PW_SMRv6_M->Timing.taskTime0;
-  simulationData->mData->mTime.mN = 1;
-  simulationData->mData->mTime.mX = &time_5;
-  simulationData->mData->mContStates.mN = 0;
-  simulationData->mData->mContStates.mX = nullptr;
-  simulationData->mData->mDiscStates.mN = 0;
-  simulationData->mData->mDiscStates.mX = &PW_SMRv6_DW.OUTPUT_1_2_Discrete;
-  simulationData->mData->mModeVector.mN = 0;
-  simulationData->mData->mModeVector.mX = &PW_SMRv6_DW.OUTPUT_1_2_Modes;
-  tmp = false;
-  simulationData->mData->mFoundZcEvents = tmp;
-  simulationData->mData->mIsMajorTimeStep = true;
-  tmp = false;
-  simulationData->mData->mIsSolverAssertCheck = tmp;
-  simulationData->mData->mIsSolverCheckingCIC = false;
-  simulationData->mData->mIsComputingJacobian = false;
-  simulationData->mData->mIsEvaluatingF0 = false;
-  simulationData->mData->mIsSolverRequestingReset = false;
-  simulationData->mData->mIsModeUpdateTimeStep = true;
-  tmp_7[0] = 0;
-  tmp_6[0] = PW_SMRv6_B.INPUT_2_1_1[0];
-  tmp_6[1] = PW_SMRv6_B.INPUT_2_1_1[1];
-  tmp_6[2] = PW_SMRv6_B.INPUT_2_1_1[2];
-  tmp_6[3] = PW_SMRv6_B.INPUT_2_1_1[3];
-  tmp_7[1] = 4;
-  tmp_6[4] = PW_SMRv6_B.INPUT_1_1_1[0];
-  tmp_6[5] = PW_SMRv6_B.INPUT_1_1_1[1];
-  tmp_6[6] = PW_SMRv6_B.INPUT_1_1_1[2];
-  tmp_6[7] = PW_SMRv6_B.INPUT_1_1_1[3];
-  tmp_7[2] = 8;
-  tmp_6[8] = PW_SMRv6_B.INPUT_3_1_1[0];
-  tmp_6[9] = PW_SMRv6_B.INPUT_3_1_1[1];
-  tmp_6[10] = PW_SMRv6_B.INPUT_3_1_1[2];
-  tmp_6[11] = PW_SMRv6_B.INPUT_3_1_1[3];
-  tmp_7[3] = 12;
-  std::memcpy(&tmp_6[12], &PW_SMRv6_B.STATE_1[0], 401U * sizeof(real_T));
-  tmp_7[4] = 413;
-  simulationData->mData->mInputValues.mN = 413;
-  simulationData->mData->mInputValues.mX = &tmp_6[0];
-  simulationData->mData->mInputOffsets.mN = 5;
-  simulationData->mData->mInputOffsets.mX = &tmp_7[0];
-  simulationData->mData->mOutputs.mN = 2;
-  simulationData->mData->mOutputs.mX = &PW_SMRv6_B.OUTPUT_1_2[0];
-  simulationData->mData->mTolerances.mN = 0;
-  simulationData->mData->mTolerances.mX = nullptr;
-  simulationData->mData->mCstateHasChanged = false;
-  time_6 = PW_SMRv6_M->Timing.taskTime0;
-  simulationData->mData->mTime.mN = 1;
-  simulationData->mData->mTime.mX = &time_6;
-  isHit_2 = 0;
-  simulationData->mData->mSampleHits.mN = 1;
-  simulationData->mData->mSampleHits.mX = &isHit_2;
-  simulationData->mData->mIsFundamentalSampleHit = true;
-  simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_2_Simulator);
-  diagnosticManager = static_cast<NeuDiagnosticManager *>
-    (PW_SMRv6_DW.OUTPUT_1_2_DiagMgr);
-  diagnosticTree = neu_diagnostic_manager_get_initial_tree(diagnosticManager);
-  k = ne_simulator_method(simulator, NESL_SIM_OUTPUTS, simulationData,
-    diagnosticManager);
-  if (k != 0) {
-    tmp = error_buffer_is_empty(rtmGetErrorStatus(PW_SMRv6_M));
-    if (tmp) {
-      msg = rtw_diagnostics_msg(diagnosticTree);
-      rtmSetErrorStatus(PW_SMRv6_M, msg);
-    }
-  }
-
-  /* End of SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
-
-  /* Reshape: '<S152>/RESHAPE' */
-  PW_SMRv6_B.RESHAPE_m = PW_SMRv6_B.OUTPUT_1_2[0];
-
-  /* Reshape: '<S153>/RESHAPE' */
-  PW_SMRv6_B.RESHAPE_gs = PW_SMRv6_B.OUTPUT_1_2[1];
-
-  /* Reshape: '<S154>/RESHAPE' */
-  PW_SMRv6_B.RESHAPE_dm = PW_SMRv6_B.OUTPUT_1_1[12];
 
   /* Update for DiscreteTransferFcn: '<S21>/Discrete Transfer Fcn' */
   minV = PW_SMRv6_B.Saturation_f0;
@@ -1019,7 +1019,7 @@ void PW_SMRv6_initialize(void)
     modelParameters.mUseSimState = false;
     modelParameters.mLinTrimCompile = false;
     modelParameters.mLoggingMode = SSC_LOGGING_NONE;
-    modelParameters.mRTWModifiedTimeStamp = 7.11928296E+8;
+    modelParameters.mRTWModifiedTimeStamp = 7.11994338E+8;
     tmp_0 = 0.001;
     modelParameters.mSolverTolerance = tmp_0;
     tmp_0 = 0.01;
@@ -1068,7 +1068,7 @@ void PW_SMRv6_initialize(void)
     modelParameters_0.mUseSimState = false;
     modelParameters_0.mLinTrimCompile = false;
     modelParameters_0.mLoggingMode = SSC_LOGGING_NONE;
-    modelParameters_0.mRTWModifiedTimeStamp = 7.11928296E+8;
+    modelParameters_0.mRTWModifiedTimeStamp = 7.11994338E+8;
     tmp_0 = 0.001;
     modelParameters_0.mSolverTolerance = tmp_0;
     tmp_0 = 0.01;
@@ -1093,54 +1093,6 @@ void PW_SMRv6_initialize(void)
     }
 
     /* End of Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_1' */
-    /* Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
-    simulator = nesl_lease_simulator("PW_SMRv6/Solver Configuration_1", 1, 0);
-    PW_SMRv6_DW.OUTPUT_1_0_Simulator = (void *)simulator;
-    zcDisabled = pointer_is_null(PW_SMRv6_DW.OUTPUT_1_0_Simulator);
-    if (zcDisabled) {
-      PW_SMRv6_eed91bea_1_gateway();
-      simulator = nesl_lease_simulator("PW_SMRv6/Solver Configuration_1", 1, 0);
-      PW_SMRv6_DW.OUTPUT_1_0_Simulator = (void *)simulator;
-    }
-
-    tmp = nesl_create_simulation_data();
-    PW_SMRv6_DW.OUTPUT_1_0_SimData = (void *)tmp;
-    diagnosticManager = rtw_create_diagnostics();
-    PW_SMRv6_DW.OUTPUT_1_0_DiagMgr = (void *)diagnosticManager;
-    modelParameters_1.mSolverType = NE_SOLVER_TYPE_DAE;
-    modelParameters_1.mSolverAbsTol = 0.001;
-    modelParameters_1.mSolverRelTol = 0.001;
-    modelParameters_1.mSolverModifyAbsTol = NE_MODIFY_ABS_TOL_NO;
-    modelParameters_1.mStartTime = 0.0;
-    modelParameters_1.mLoadInitialState = false;
-    modelParameters_1.mUseSimState = false;
-    modelParameters_1.mLinTrimCompile = false;
-    modelParameters_1.mLoggingMode = SSC_LOGGING_NONE;
-    modelParameters_1.mRTWModifiedTimeStamp = 7.11928296E+8;
-    tmp_0 = 0.001;
-    modelParameters_1.mSolverTolerance = tmp_0;
-    tmp_0 = 0.01;
-    modelParameters_1.mFixedStepSize = tmp_0;
-    zcDisabled = false;
-    modelParameters_1.mVariableStepSolver = zcDisabled;
-    zcDisabled = false;
-    modelParameters_1.mIsUsingODEN = zcDisabled;
-    modelParameters_1.mZcDisabled = true;
-    simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_0_Simulator);
-    diagnosticManager = static_cast<NeuDiagnosticManager *>
-      (PW_SMRv6_DW.OUTPUT_1_0_DiagMgr);
-    diagnosticTree = neu_diagnostic_manager_get_initial_tree(diagnosticManager);
-    tmp_1 = nesl_initialize_simulator(simulator, &modelParameters_1,
-      diagnosticManager);
-    if (tmp_1 != 0) {
-      zcDisabled = error_buffer_is_empty(rtmGetErrorStatus(PW_SMRv6_M));
-      if (zcDisabled) {
-        msg = rtw_diagnostics_msg(diagnosticTree);
-        rtmSetErrorStatus(PW_SMRv6_M, msg);
-      }
-    }
-
-    /* End of Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
     /* Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
     simulator = nesl_lease_simulator("PW_SMRv6/Solver Configuration_1", 1, 2);
     PW_SMRv6_DW.OUTPUT_1_2_Simulator = (void *)simulator;
@@ -1155,6 +1107,54 @@ void PW_SMRv6_initialize(void)
     PW_SMRv6_DW.OUTPUT_1_2_SimData = (void *)tmp;
     diagnosticManager = rtw_create_diagnostics();
     PW_SMRv6_DW.OUTPUT_1_2_DiagMgr = (void *)diagnosticManager;
+    modelParameters_1.mSolverType = NE_SOLVER_TYPE_DAE;
+    modelParameters_1.mSolverAbsTol = 0.001;
+    modelParameters_1.mSolverRelTol = 0.001;
+    modelParameters_1.mSolverModifyAbsTol = NE_MODIFY_ABS_TOL_NO;
+    modelParameters_1.mStartTime = 0.0;
+    modelParameters_1.mLoadInitialState = false;
+    modelParameters_1.mUseSimState = false;
+    modelParameters_1.mLinTrimCompile = false;
+    modelParameters_1.mLoggingMode = SSC_LOGGING_NONE;
+    modelParameters_1.mRTWModifiedTimeStamp = 7.11994338E+8;
+    tmp_0 = 0.001;
+    modelParameters_1.mSolverTolerance = tmp_0;
+    tmp_0 = 0.01;
+    modelParameters_1.mFixedStepSize = tmp_0;
+    zcDisabled = false;
+    modelParameters_1.mVariableStepSolver = zcDisabled;
+    zcDisabled = false;
+    modelParameters_1.mIsUsingODEN = zcDisabled;
+    modelParameters_1.mZcDisabled = true;
+    simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_2_Simulator);
+    diagnosticManager = static_cast<NeuDiagnosticManager *>
+      (PW_SMRv6_DW.OUTPUT_1_2_DiagMgr);
+    diagnosticTree = neu_diagnostic_manager_get_initial_tree(diagnosticManager);
+    tmp_1 = nesl_initialize_simulator(simulator, &modelParameters_1,
+      diagnosticManager);
+    if (tmp_1 != 0) {
+      zcDisabled = error_buffer_is_empty(rtmGetErrorStatus(PW_SMRv6_M));
+      if (zcDisabled) {
+        msg = rtw_diagnostics_msg(diagnosticTree);
+        rtmSetErrorStatus(PW_SMRv6_M, msg);
+      }
+    }
+
+    /* End of Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
+    /* Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+    simulator = nesl_lease_simulator("PW_SMRv6/Solver Configuration_1", 1, 0);
+    PW_SMRv6_DW.OUTPUT_1_0_Simulator = (void *)simulator;
+    zcDisabled = pointer_is_null(PW_SMRv6_DW.OUTPUT_1_0_Simulator);
+    if (zcDisabled) {
+      PW_SMRv6_eed91bea_1_gateway();
+      simulator = nesl_lease_simulator("PW_SMRv6/Solver Configuration_1", 1, 0);
+      PW_SMRv6_DW.OUTPUT_1_0_Simulator = (void *)simulator;
+    }
+
+    tmp = nesl_create_simulation_data();
+    PW_SMRv6_DW.OUTPUT_1_0_SimData = (void *)tmp;
+    diagnosticManager = rtw_create_diagnostics();
+    PW_SMRv6_DW.OUTPUT_1_0_DiagMgr = (void *)diagnosticManager;
     modelParameters_2.mSolverType = NE_SOLVER_TYPE_DAE;
     modelParameters_2.mSolverAbsTol = 0.001;
     modelParameters_2.mSolverRelTol = 0.001;
@@ -1164,7 +1164,7 @@ void PW_SMRv6_initialize(void)
     modelParameters_2.mUseSimState = false;
     modelParameters_2.mLinTrimCompile = false;
     modelParameters_2.mLoggingMode = SSC_LOGGING_NONE;
-    modelParameters_2.mRTWModifiedTimeStamp = 7.11928296E+8;
+    modelParameters_2.mRTWModifiedTimeStamp = 7.11994338E+8;
     tmp_0 = 0.001;
     modelParameters_2.mSolverTolerance = tmp_0;
     tmp_0 = 0.01;
@@ -1174,9 +1174,9 @@ void PW_SMRv6_initialize(void)
     zcDisabled = false;
     modelParameters_2.mIsUsingODEN = zcDisabled;
     modelParameters_2.mZcDisabled = true;
-    simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_2_Simulator);
+    simulator = static_cast<NeslSimulator *>(PW_SMRv6_DW.OUTPUT_1_0_Simulator);
     diagnosticManager = static_cast<NeuDiagnosticManager *>
-      (PW_SMRv6_DW.OUTPUT_1_2_DiagMgr);
+      (PW_SMRv6_DW.OUTPUT_1_0_DiagMgr);
     diagnosticTree = neu_diagnostic_manager_get_initial_tree(diagnosticManager);
     tmp_1 = nesl_initialize_simulator(simulator, &modelParameters_2,
       diagnosticManager);
@@ -1188,7 +1188,7 @@ void PW_SMRv6_initialize(void)
       }
     }
 
-    /* End of Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
+    /* End of Start for SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
   }
 
   /* InitializeConditions for DiscreteTransferFcn: '<S21>/Discrete Transfer Fcn' */
@@ -1238,22 +1238,22 @@ void PW_SMRv6_terminate(void)
   nesl_erase_simulator("PW_SMRv6/Solver Configuration_1");
   nesl_destroy_registry();
 
-  /* Terminate for SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
-  diagnosticManager = static_cast<NeuDiagnosticManager *>
-    (PW_SMRv6_DW.OUTPUT_1_0_DiagMgr);
-  neu_destroy_diagnostic_manager(diagnosticManager);
-  simulationData = static_cast<NeslSimulationData *>
-    (PW_SMRv6_DW.OUTPUT_1_0_SimData);
-  nesl_destroy_simulation_data(simulationData);
-  nesl_erase_simulator("PW_SMRv6/Solver Configuration_1");
-  nesl_destroy_registry();
-
   /* Terminate for SimscapeExecutionBlock: '<S94>/OUTPUT_1_2' */
   diagnosticManager = static_cast<NeuDiagnosticManager *>
     (PW_SMRv6_DW.OUTPUT_1_2_DiagMgr);
   neu_destroy_diagnostic_manager(diagnosticManager);
   simulationData = static_cast<NeslSimulationData *>
     (PW_SMRv6_DW.OUTPUT_1_2_SimData);
+  nesl_destroy_simulation_data(simulationData);
+  nesl_erase_simulator("PW_SMRv6/Solver Configuration_1");
+  nesl_destroy_registry();
+
+  /* Terminate for SimscapeExecutionBlock: '<S94>/OUTPUT_1_0' */
+  diagnosticManager = static_cast<NeuDiagnosticManager *>
+    (PW_SMRv6_DW.OUTPUT_1_0_DiagMgr);
+  neu_destroy_diagnostic_manager(diagnosticManager);
+  simulationData = static_cast<NeslSimulationData *>
+    (PW_SMRv6_DW.OUTPUT_1_0_SimData);
   nesl_destroy_simulation_data(simulationData);
   nesl_erase_simulator("PW_SMRv6/Solver Configuration_1");
   nesl_destroy_registry();

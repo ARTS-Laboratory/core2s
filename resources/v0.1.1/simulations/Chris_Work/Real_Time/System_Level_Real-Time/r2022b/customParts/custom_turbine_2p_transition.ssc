@@ -1,0 +1,380 @@
+component custom_turbine_2p_transition
+% HP Turbine (2P) - Transition-Safe Diagnostic Version
+% R2022b custom two-phase turbine
+%
+% Purpose:
+%   Test whether the turbine/plant transition is being destabilized
+%   by the temporary zero-flow condition while the directional valve
+%   passes through its neutral position.
+%
+% Behavior:
+%
+%   NO FORWARD FLOW:
+%       mdot = 0
+%       enthalpy drop = 0
+%       turbine power = 0
+%       h_out = h_in
+%
+%   FORWARD FLOW:
+%       pressure-driven mass flow
+%       pressure-ratio-based enthalpy extraction
+%       turbine power = mdot * enthalpy drop
+%
+% The mass-flow relation uses pressure difference rather than the
+% previous pressure-squared relation. The square-root argument is
+% explicitly limited to nonnegative values.
+
+nodes
+    A = foundation.two_phase_fluid.two_phase_fluid; % Inlet
+    B = foundation.two_phase_fluid.two_phase_fluid; % Outlet
+end
+
+outputs
+    power_out = {0, 'kW'};
+    enthalpy_drop_out = {0, 'kJ/kg'};
+end
+
+
+parameters
+
+    % =========================================================
+    % NOMINAL MASS-FLOW CHARACTERISTICS
+    % =========================================================
+
+    pA_nom = {3.5, 'MPa'};
+    pB_nom = {1.0, 'MPa'};
+    mdot_nom = {1.5, 'kg/s'};
+
+    % Minimum pressure difference required before the turbine
+    % establishes forward flow.
+    dp_min = {1, 'kPa'};
+
+
+    % =========================================================
+    % TURBINE ENERGY EXTRACTION
+    % =========================================================
+
+    turbine_efficiency = {0.75, '1'};
+
+    % Reference ideal enthalpy drop at the nominal pressure ratio.
+    reference_enthalpy_drop = {500, 'kJ/kg'};
+
+end
+
+
+% =============================================================
+% SOLVER VARIABLES
+% =============================================================
+
+variables (Access = protected)
+
+    mdot_A = {0, 'kg/s'};
+    mdot_B = {0, 'kg/s'};
+
+    Phi_A = {0, 'kW'};
+    Phi_B = {0, 'kW'};
+
+    u_A = {1500, 'kJ/kg'};
+
+end
+
+
+% =============================================================
+% BRANCHES
+% =============================================================
+
+branches
+
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+
+    Phi_A : A.Phi -> *;
+    Phi_B : B.Phi -> *;
+
+end
+
+
+% =============================================================
+% INTERNAL ENERGY CONVECTION
+% =============================================================
+
+components (ExternalAccess = none)
+
+    convection_A = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+    convection_B = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+end
+
+
+% =============================================================
+% INTERMEDIATE CALCULATIONS
+% =============================================================
+
+intermediates (Access = private, ExternalAccess = none)
+
+    % ---------------------------------------------------------
+    % PORT PRESSURES
+    % ---------------------------------------------------------
+
+    p_A = A.p;
+    p_B = B.p;
+
+
+    % ---------------------------------------------------------
+    % INLET INTERNAL ENERGY
+    % ---------------------------------------------------------
+
+    u_A_port = A.u;
+
+
+    % ---------------------------------------------------------
+    % NORMALIZED INLET INTERNAL ENERGY
+    % ---------------------------------------------------------
+
+    unorm_A = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_A_port, ...
+        p_A, ...
+        A.u_min, ...
+        A.u_max, ...
+        A.p_TLU, ...
+        A.u_sat_liq_TLU, ...
+        A.u_sat_vap_TLU);
+
+
+    % ---------------------------------------------------------
+    % INLET SPECIFIC VOLUME
+    % ---------------------------------------------------------
+
+    v_A = tablelookup( ...
+        A.unorm_TLU, ...
+        A.p_TLU, ...
+        A.v_TLU, ...
+        unorm_A, ...
+        p_A, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+
+    % ---------------------------------------------------------
+    % INLET SPECIFIC ENTHALPY
+    % ---------------------------------------------------------
+
+    h_A = u_A_port + p_A*v_A;
+
+
+    % ---------------------------------------------------------
+    % FORWARD PRESSURE DIFFERENCE
+    % ---------------------------------------------------------
+
+    Dp = p_A - p_B;
+
+
+    % ---------------------------------------------------------
+    % NORMALIZED PRESSURE-DIFFERENCE ARGUMENT
+    %
+    % This is dimensionless.
+    %
+    % A reverse-pressure trial state therefore produces a
+    % negative raw value, which is clipped to zero before sqrt.
+    % ---------------------------------------------------------
+
+    pressure_difference_ratio_raw = ...
+        Dp / (pA_nom - pB_nom);
+
+    pressure_difference_ratio = ...
+        simscape.function.limit( ...
+            pressure_difference_ratio_raw, ...
+            0, ...
+            1e6, ...
+            false);
+
+
+    % ---------------------------------------------------------
+    % TRANSITION-SAFE MASS FLOW
+    %
+    % Only the positive pressure difference contributes.
+    % ---------------------------------------------------------
+
+    mdot_forward = ...
+        mdot_nom * sqrt(pressure_difference_ratio);
+
+
+    % ---------------------------------------------------------
+    % NOMINAL PRESSURE RATIO
+    % ---------------------------------------------------------
+
+    reference_pressure_ratio = ...
+        pB_nom / pA_nom;
+
+
+    % ---------------------------------------------------------
+    % CURRENT PRESSURE RATIO
+    % ---------------------------------------------------------
+
+    pressure_ratio_raw = p_B / p_A;
+
+    pressure_ratio = ...
+        simscape.function.limit( ...
+            pressure_ratio_raw, ...
+            0, ...
+            1, ...
+            false);
+
+
+    % ---------------------------------------------------------
+    % IDEAL ENTHALPY DROP
+    % ---------------------------------------------------------
+
+    ideal_enthalpy_drop = ...
+        reference_enthalpy_drop * ...
+        (1 - pressure_ratio) / ...
+        (1 - reference_pressure_ratio);
+
+
+    % ---------------------------------------------------------
+    % ACTUAL ENTHALPY DROP
+    % ---------------------------------------------------------
+
+    actual_enthalpy_drop = ...
+        turbine_efficiency * ideal_enthalpy_drop;
+
+
+    % ---------------------------------------------------------
+    % ZERO-FLOW / FORWARD-FLOW SWITCH
+    %
+    % During zero flow:
+    %
+    %   dh = 0
+    %
+    % During forward flow:
+    %
+    %   dh = calculated turbine drop
+    % ---------------------------------------------------------
+
+    enthalpy_drop_active = ...
+        if gt(Dp, dp_min), ...
+            actual_enthalpy_drop ...
+        else ...
+            {0, 'kJ/kg'} ...
+        end;
+
+
+    % ---------------------------------------------------------
+    % OUTLET ENTHALPY
+    %
+    % Zero-flow state:
+    %   h_B = h_A
+    %
+    % Forward-flow state:
+    %   h_B = h_A - dh
+    % ---------------------------------------------------------
+
+    h_B_target = ...
+        h_A - enthalpy_drop_active;
+
+
+    % ---------------------------------------------------------
+    % TURBINE POWER
+    % ---------------------------------------------------------
+
+    turbine_power = ...
+        abs(mdot_A) * enthalpy_drop_active;
+
+end
+
+
+% =============================================================
+% PHYSICAL CONNECTIONS
+% =============================================================
+
+connections
+
+    connect(A, convection_A.port);
+    connect(B, convection_B.port);
+
+end
+
+
+% =============================================================
+% EQUATIONS
+% =============================================================
+
+equations
+
+    % ---------------------------------------------------------
+    % INLET INTERNAL ENERGY
+    % ---------------------------------------------------------
+
+    u_A == A.u;
+
+
+    % ---------------------------------------------------------
+    % MASS FLOW
+    %
+    % Forward flow:
+    %   use protected square-root pressure-difference relation
+    %
+    % Otherwise:
+    %   zero flow
+    % ---------------------------------------------------------
+
+    if Dp > dp_min
+
+        mdot_A == mdot_forward;
+
+    else
+
+        mdot_A == {0, 'kg/s'};
+
+    end
+
+
+    % ---------------------------------------------------------
+    % MASS CONSERVATION
+    % ---------------------------------------------------------
+
+    mdot_A + mdot_B == 0;
+
+
+    % ---------------------------------------------------------
+    % ENERGY CONVECTION
+    % ---------------------------------------------------------
+
+    convection_A.mdot == mdot_A;
+    convection_A.Phi == Phi_A;
+
+    convection_B.mdot == mdot_B;
+    convection_B.Phi == Phi_B;
+
+
+    % ---------------------------------------------------------
+    % TURBINE THERMODYNAMIC TRANSITION
+    %
+    % No forward flow:
+    %   h_B = h_A
+    %
+    % Forward flow:
+    %   h_B = h_A - dh
+    % ---------------------------------------------------------
+
+    convection_A.ht_I == h_A;
+
+    convection_B.ht_I == h_B_target;
+
+
+    % ---------------------------------------------------------
+    % DIAGNOSTIC OUTPUTS
+    % ---------------------------------------------------------
+
+    power_out == turbine_power;
+
+    enthalpy_drop_out == enthalpy_drop_active;
+
+end
+
+end

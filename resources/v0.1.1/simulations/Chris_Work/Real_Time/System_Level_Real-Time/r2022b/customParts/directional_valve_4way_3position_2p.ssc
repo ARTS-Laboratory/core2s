@@ -1,117 +1,207 @@
 component directional_valve_4way_3position_2p
-    
-nodes 
-    P = fluids.two_phase_fluid.valves_orifices.orifice;
-    A = fluids.two_phase_fluid.valves_orifices.orifice;
-    B = fluids.two_phase_fluid.valves_orifices.orifice;
-    T = fluids.two_phase_fluid.valves_orifices.orifice;
+% 4-Way 3-Position Directional Valve (2P)
+%
+% P = common inlet
+% A = turbine path
+% B = bypass path
+% T = common outlet
+%
+% Positive spool:
+%   P -> A
+%   B -> T
+%
+% Negative spool:
+%   P -> B
+%   A -> T
+%
+% This version uses separate opening thresholds for the
+% turbine and bypass paths to create a deliberate overlap
+% during spool transition.
+%
+% Turbine opening begins at:
+%   S = -1 mm
+%
+% Bypass closes completely at:
+%   S = +1 mm
+%
+% Therefore, both paths have nonzero opening between:
+%   -1 mm < S < +1 mm
+%
+% Full orifice travel:
+%   5 mm
+
+nodes
+    P = foundation.two_phase_fluid.two_phase_fluid; % P
+    A = foundation.two_phase_fluid.two_phase_fluid; % A
+    B = foundation.two_phase_fluid.two_phase_fluid; % B
+    T = foundation.two_phase_fluid.two_phase_fluid; % T
 end
 
 inputs
-    S = {0, 'm'};
+    S = {0, 'm'}; % Overall spool displacement
 end
 
 parameters
-    spool_max = {7.5e-3, 'm'};
-    spool_deadband = {2.5e-3, 'm'};
+
+    % =========================================================
+    % TRANSITION PARAMETERS
+    % =========================================================
+
+    % Turbine path begins opening at this spool position.
+    turbine_opening_start = {-1e-3, 'm'};
+
+    % Bypass path is completely closed once the spool reaches
+    % this position.
+    bypass_closing_end = {1e-3, 'm'};
+
+    % Full control-member travel of each R2022b Orifice.
     orifice_travel = {5e-3, 'm'};
+
 end
 
-outputs (ExternalAccess = none)
-    area_PA = {2.03e-9, 'm^2'};
-    area_PB = {2.03e-9, 'm^2'};
-    area_AT = {2.03e-9, 'm^2'};
-    area_BT = {2.03e-9, 'm^2'};
+
+components (ExternalAccess = none)
+
+    % =========================================================
+    % FOUR 2P ORIFICES
+    % =========================================================
+
+    P_A = fluids.two_phase_fluid.valves_orifices.orifice;
+    P_B = fluids.two_phase_fluid.valves_orifices.orifice;
+    A_T = fluids.two_phase_fluid.valves_orifices.orifice;
+    B_T = fluids.two_phase_fluid.valves_orifices.orifice;
+
+
+    % =========================================================
+    % TURBINE-SIDE SIGNAL
+    %
+    % S_turbine = S - turbine_opening_start
+    %
+    % Since turbine_opening_start = -1 mm:
+    %
+    % S_turbine = S + 1 mm
+    % =========================================================
+
+    turbine_sub = foundation.signal.functions.subtract;
+
+    turbine_start = foundation.signal.sources.constant( ...
+        constant = turbine_opening_start);
+
+    turbine_to_normalized = foundation.signal.functions.gain( ...
+        gain = {1, '1/m'});
+
+    turbine_sat = foundation.signal.nonlinear.saturation( ...
+        lower_limit = {0, '1'}, ...
+        upper_limit = {1, '1'});
+
+    turbine_to_position = foundation.signal.functions.gain( ...
+        gain = orifice_travel);
+
+
+    % =========================================================
+    % BYPASS-SIDE SIGNAL
+    %
+    % S_bypass = bypass_closing_end - S
+    %
+    % This is intentionally calculated in this order so that
+    % the signal is positive at negative spool positions.
+    % =========================================================
+
+    bypass_sub = foundation.signal.functions.subtract;
+
+    bypass_end = foundation.signal.sources.constant( ...
+        constant = bypass_closing_end);
+
+    bypass_to_normalized = foundation.signal.functions.gain( ...
+        gain = {1, '1/m'});
+
+    bypass_sat = foundation.signal.nonlinear.saturation( ...
+        lower_limit = {0, '1'}, ...
+        upper_limit = {1, '1'});
+
+    bypass_to_position = foundation.signal.functions.gain( ...
+        gain = orifice_travel);
+
+end
+
+
+connections
+
+    % =========================================================
+    % HYDRAULIC CONNECTIONS
+    % =========================================================
+
+    % P -> A
+    connect(P, P_A.A);
+    connect(P_A.B, A);
+
+    % P -> B
+    connect(P, P_B.A);
+    connect(P_B.B, B);
+
+    % A -> T
+    connect(A, A_T.A);
+    connect(A_T.B, T);
+
+    % B -> T
+    connect(B, B_T.A);
+    connect(B_T.B, T);
+
+
+    % =========================================================
+    % TURBINE PATH: P-A AND B-T
+    % =========================================================
+
+    % S_turbine = S - turbine_opening_start
+    connect(S, turbine_sub.I1);
+    connect(turbine_start.O, turbine_sub.I2);
+
+    % Convert meters -> dimensionless normalized travel
+    connect(turbine_sub.O, turbine_to_normalized.I);
+
+    % Clamp to 0...100%
+    connect(turbine_to_normalized.O, turbine_sat.I);
+
+    % Convert normalized travel -> meters
+    connect(turbine_sat.O, turbine_to_position.I);
+
+    % Same positive-spool signal controls both turbine-side
+    % orifices.
+    connect(turbine_to_position.O, P_A.S);
+    connect(turbine_to_position.O, B_T.S);
+
+
+    % =========================================================
+    % BYPASS PATH: P-B AND A-T
+    % =========================================================
+
+    % S_bypass = bypass_closing_end - S
+    connect(bypass_end.O, bypass_sub.I1);
+    connect(S, bypass_sub.I2);
+
+    % Convert meters -> dimensionless normalized travel
+    connect(bypass_sub.O, bypass_to_normalized.I);
+
+    % Clamp to 0...100%
+    connect(bypass_to_normalized.O, bypass_sat.I);
+
+    % Convert normalized travel -> meters
+    connect(bypass_sat.O, bypass_to_position.I);
+
+    % Same negative-spool signal controls both bypass-side
+    % orifices.
+    connect(bypass_to_position.O, P_B.S);
+    connect(bypass_to_position.O, A_T.S);
+
 end
 
 
 annotations
-    P: Side = left;
-    A: Side = right;
-    B: Side = right;
-    T: Side = left;
-    S: Side = top;
-end
-
-components (ExternalAccess = none)
-    P_A = foundation.two_phase_fluid.elements.local_restriction;
-    P_B = foundation.two_phase_fluid.elements.local_restriction;
-    A_T = foundation.two_phase_fluid.elements.local_restriction;
-    B_T = foundation.two_phase_fluid.elements.local_restriction;
-end
-
-connections
-    connect(P, P_A.A);
-    connect(P_A.B, A);
-
-    connect(P, P_B.A);
-    connect(P_B.B, B);
-
-    connect(A, A_T.A);
-    connect(A_T.B, T);
-
-    connect(B, B_T.A);
-    connect(B_T.B, T);
-end
-
-intermediates (Access = private, ExternalAccess = none)
-
-    % Positive-direction spool opening
-    f_pos = if ge(S, spool_open), ...
-                1 ...
-            else ...
-                if ge(S, spool_closed), ...
-                    (S - spool_closed) / ...
-                    (spool_open - spool_closed) ...
-                else ...
-                    0 ...
-                end ...
-            end;
-
-    % Negative-direction spool opening
-    f_neg = if le(S, -spool_open), ...
-                1 ...
-            else ...
-                if le(S, -spool_closed), ...
-                    (-S - spool_closed) / ...
-                    (spool_open - spool_closed) ...
-                else ...
-                    0 ...
-                end ...
-            end;
-
-    A_pos = min_area + ...
-        (max_area - min_area)*f_pos;
-
-    A_neg = min_area + ...
-        (max_area - min_area)*f_neg;
-
-end
-
-equations
-
-    % Generate the four valve opening areas.
-    area_PA == A_pos;
-    area_BT == A_pos;
-
-    area_PB == A_neg;
-    area_AT == A_neg;
-
-    % Parameter consistency
-    assert(min_area > 0);
-    assert(max_area > min_area);
-
-    assert(spool_closed >= 0);
-    assert(spool_open > spool_closed);
-
-    assert(maximum_Cv > 0);
-    assert(leakage_fraction > 0);
-    assert(leakage_fraction < 1);
-
-    assert(smoothing_factor > 0);
-    assert(laminar_pressure_ratio > 0);
-    assert(laminar_pressure_ratio < 1);
-
+    P : Side = left;
+    A : Side = right;
+    B : Side = right;
+    T : Side = left;
+    S : Side = top;
 end
 
 end

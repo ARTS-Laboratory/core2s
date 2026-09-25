@@ -1,0 +1,551 @@
+component custom_2p_turbine_2nd_layer
+% =============================================================
+% 2P TURBINE - PROPERTY-BASED TRANSITION VERSION
+%
+% R2022b
+%
+% Purpose:
+%   Replace the previous reference-pressure-ratio energy model
+%   with a thermodynamic expansion model based on:
+%
+%       1) inlet pressure/internal energy
+%       2) inlet enthalpy and entropy
+%       3) isentropic expansion to outlet pressure
+%       4) turbine isentropic efficiency
+%       5) actual shaft power
+%
+% Current modeling assumption:
+%
+%   The isentropic outlet state remains inside the two-phase
+%   region. This is appropriate for the present turbine model
+%   before superheated inlet behavior is added.
+%
+% Mass flow remains pressure-driven and is protected against
+% reverse-pressure trial states.
+%
+% Zero-flow behavior:
+%
+%       mdot = 0
+%       enthalpy drop = 0
+%       shaft power = 0
+%       h_out = h_in
+%
+% =============================================================
+
+
+nodes
+
+    A = foundation.two_phase_fluid.two_phase_fluid;
+    B = foundation.two_phase_fluid.two_phase_fluid;
+
+end
+
+
+% =============================================================
+% OUTPUTS
+% =============================================================
+
+outputs
+    power_out = {0, 'kW'};
+    enthalpy_drop_out = {0, 'kJ/kg'};
+
+    ideal_outlet_quality = {0, '1'};
+    ideal_outlet_enthalpy = {0, 'kJ/kg'};
+    inlet_entropy = {0, 'kJ/(kg*K)'};
+end
+
+
+% =============================================================
+% PARAMETERS
+% =============================================================
+
+parameters
+
+    % ---------------------------------------------------------
+    % NOMINAL FLOW CHARACTERISTICS
+    % ---------------------------------------------------------
+
+    pA_nom = {3.5, 'MPa'};
+
+    pB_nom = {1.0, 'MPa'};
+
+    mdot_nom = {1.5, 'kg/s'};
+
+    dp_min = {1, 'kPa'};
+
+
+    % ---------------------------------------------------------
+    % TURBINE EFFICIENCY
+    % ---------------------------------------------------------
+
+    turbine_efficiency = {0.75, '1'};
+
+end
+
+
+% =============================================================
+% VARIABLES
+% =============================================================
+
+variables (Access = protected)
+
+    % ---------------------------------------------------------
+    % THROUGH VARIABLES
+    % ---------------------------------------------------------
+
+    mdot_A = {0, 'kg/s'};
+
+    mdot_B = {0, 'kg/s'};
+
+    Phi_A = {0, 'kW'};
+
+    Phi_B = {0, 'kW'};
+
+
+    % ---------------------------------------------------------
+    % INLET INTERNAL ENERGY
+    %
+    % This is connected to the physical port in equations.
+    % ---------------------------------------------------------
+
+    u_A = {1500, 'kJ/kg'};
+
+end
+
+
+% =============================================================
+% BRANCHES
+% =============================================================
+
+branches
+
+    mdot_A : A.mdot -> *;
+
+    mdot_B : B.mdot -> *;
+
+    Phi_A : A.Phi -> *;
+
+    Phi_B : B.Phi -> *;
+
+end
+
+
+% =============================================================
+% INTERNAL COMPONENTS
+% =============================================================
+
+components (ExternalAccess = none)
+
+    % ---------------------------------------------------------
+    % Energy convection at inlet
+    % ---------------------------------------------------------
+
+    convection_A = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+
+    % ---------------------------------------------------------
+    % Energy convection at outlet
+    % ---------------------------------------------------------
+
+    convection_B = foundation.two_phase_fluid.port_convection( ...
+        flow_area = {0.01, 'm^2'}, ...
+        length_scale = sqrt(4*{0.01, 'm^2'}/pi));
+
+end
+
+
+% =============================================================
+% INTERMEDIATES
+% =============================================================
+
+intermediates (Access = private, ExternalAccess = none)
+
+
+    % =========================================================
+    % PORT PRESSURES
+    % =========================================================
+
+    p_A = A.p;
+
+    p_B = B.p;
+
+
+    % =========================================================
+    % INLET NORMALIZED INTERNAL ENERGY
+    % =========================================================
+
+    unorm_A = foundation.two_phase_fluid.normalized_internal_energy( ...
+        u_A, ...
+        p_A, ...
+        A.u_min, ...
+        A.u_max, ...
+        A.p_TLU, ...
+        A.u_sat_liq_TLU, ...
+        A.u_sat_vap_TLU);
+
+
+    % =========================================================
+    % INLET SPECIFIC VOLUME
+    % =========================================================
+
+    v_A = tablelookup( ...
+        A.unorm_TLU, ...
+        A.p_TLU, ...
+        A.v_TLU, ...
+        unorm_A, ...
+        p_A, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+
+    % =========================================================
+    % INLET SPECIFIC ENTHALPY
+    % =========================================================
+
+    h_A = u_A + p_A*v_A;
+
+
+    % =========================================================
+    % INLET SPECIFIC ENTROPY
+    %
+    % The 2P property table provides entropy as a function of
+    % normalized internal energy and pressure.
+    % =========================================================
+
+    s_A = tablelookup( ...
+        A.unorm_TLU, ...
+        A.p_TLU, ...
+        A.s_TLU, ...
+        unorm_A, ...
+        p_A, ...
+        interpolation = linear, ...
+        extrapolation = linear);
+
+
+    % =========================================================
+    % FORWARD PRESSURE DIFFERENCE
+    % =========================================================
+
+    Dp = p_A - p_B;
+
+
+    % =========================================================
+    % PRESSURE DIFFERENCE RATIO
+    %
+    % Used only when calculating forward flow.
+    %
+    % The lower limit protects sqrt() from negative trial
+    % states during nonlinear solving.
+    % =========================================================
+
+    pressure_difference_ratio_raw = ...
+        Dp / (pA_nom - pB_nom);
+
+    pressure_difference_ratio = ...
+        simscape.function.limit( ...
+            pressure_difference_ratio_raw, ...
+            0, ...
+            1e6, ...
+            false);
+
+
+    % =========================================================
+    % ISENTROPIC MASS-FLOW ESTIMATE
+    %
+    % This remains the same general pressure-driven structure
+    % used in the previous turbine.
+    % =========================================================
+
+    mdot_forward = ...
+        mdot_nom * sqrt(pressure_difference_ratio);
+
+% =========================================================
+% SATURATED LIQUID/VAPOR STATES AT OUTLET PRESSURE
+% =========================================================
+
+% Saturated liquid internal energy
+u_f_B = tablelookup( ...
+    A.p_TLU, ...
+    A.u_sat_liq_TLU, ...
+    p_B, ...
+    interpolation = linear, ...
+    extrapolation = linear);
+
+% Saturated vapor internal energy
+u_g_B = tablelookup( ...
+    A.p_TLU, ...
+    A.u_sat_vap_TLU, ...
+    p_B, ...
+    interpolation = linear, ...
+    extrapolation = linear);
+
+
+% Normalize saturated liquid internal energy
+unorm_f_B = foundation.two_phase_fluid.normalized_internal_energy( ...
+    u_f_B, ...
+    p_B, ...
+    A.u_min, ...
+    A.u_max, ...
+    A.p_TLU, ...
+    A.u_sat_liq_TLU, ...
+    A.u_sat_vap_TLU);
+
+% Normalize saturated vapor internal energy
+unorm_g_B = foundation.two_phase_fluid.normalized_internal_energy( ...
+    u_g_B, ...
+    p_B, ...
+    A.u_min, ...
+    A.u_max, ...
+    A.p_TLU, ...
+    A.u_sat_liq_TLU, ...
+    A.u_sat_vap_TLU);
+
+
+% Saturated liquid entropy
+s_f_B = tablelookup( ...
+    A.unorm_TLU, ...
+    A.p_TLU, ...
+    A.s_TLU, ...
+    unorm_f_B, ...
+    p_B, ...
+    interpolation = linear, ...
+    extrapolation = linear);
+
+% Saturated vapor entropy
+s_g_B = tablelookup( ...
+    A.unorm_TLU, ...
+    A.p_TLU, ...
+    A.s_TLU, ...
+    unorm_g_B, ...
+    p_B, ...
+    interpolation = linear, ...
+    extrapolation = linear);
+
+
+% Saturated liquid specific volume
+v_f_B = tablelookup( ...
+    A.unorm_TLU, ...
+    A.p_TLU, ...
+    A.v_TLU, ...
+    unorm_f_B, ...
+    p_B, ...
+    interpolation = linear, ...
+    extrapolation = linear);
+
+% Saturated vapor specific volume
+v_g_B = tablelookup( ...
+    A.unorm_TLU, ...
+    A.p_TLU, ...
+    A.v_TLU, ...
+    unorm_g_B, ...
+    p_B, ...
+    interpolation = linear, ...
+    extrapolation = linear);
+
+
+% Saturated liquid enthalpy
+h_f_B = u_f_B + p_B*v_f_B;
+
+% Saturated vapor enthalpy
+h_g_B = u_g_B + p_B*v_g_B;
+
+
+
+
+    % =========================================================
+    % ISENTROPIC OUTLET QUALITY
+    %
+    % x_2s =
+    %
+    %       (s_in - s_f)
+    %       ---------------
+    %       (s_g - s_f)
+    %
+    % =========================================================
+
+    quality_2s_raw = ...
+        (s_A - s_f_B) / ...
+        (s_g_B - s_f_B);
+
+
+    % Prevent physically impossible trial qualities from
+    % contaminating the enthalpy calculation.
+
+    quality_2s = ...
+        simscape.function.limit( ...
+            quality_2s_raw, ...
+            0, ...
+            1, ...
+            false);
+
+
+    % =========================================================
+    % ISENTROPIC OUTLET ENTHALPY
+    % =========================================================
+
+    h_B_isentropic = ...
+        h_f_B + ...
+        quality_2s * (h_g_B - h_f_B);
+
+
+    % =========================================================
+    % IDEAL ENTHALPY DROP
+    % =========================================================
+
+    ideal_enthalpy_drop = ...
+        h_A - h_B_isentropic;
+
+
+    % =========================================================
+    % ACTUAL ENTHALPY DROP
+    % =========================================================
+
+    actual_enthalpy_drop = ...
+        turbine_efficiency * ...
+        ideal_enthalpy_drop;
+
+
+    % =========================================================
+    % TRANSITION-SAFE ENTHALPY DROP
+    %
+    % During neutral/zero-flow operation:
+    %
+    %     dh = 0
+    %
+    % During forward turbine operation:
+    %
+    %     dh = actual turbine drop
+    % =========================================================
+
+    enthalpy_drop_active = ...
+        if gt(Dp, dp_min), ...
+            actual_enthalpy_drop ...
+        else ...
+            {0, 'kJ/kg'} ...
+        end;
+
+
+    % =========================================================
+    % ACTUAL OUTLET ENTHALPY
+    % =========================================================
+
+    h_B = ...
+        h_A - enthalpy_drop_active;
+
+
+    % =========================================================
+    % TURBINE SHAFT POWER
+    % =========================================================
+
+    turbine_power = ...
+        abs(mdot_A) * enthalpy_drop_active;
+
+end
+
+
+% =============================================================
+% CONNECTIONS
+% =============================================================
+
+connections
+
+    connect(A, convection_A.port);
+
+    connect(B, convection_B.port);
+
+end
+
+
+% =============================================================
+% EQUATIONS
+% =============================================================
+
+equations
+
+
+    % =========================================================
+    % INLET INTERNAL ENERGY
+    % =========================================================
+
+    u_A == A.u;
+
+
+    % =========================================================
+    % MASS-FLOW RELATION
+    %
+    % Forward pressure:
+    %     use pressure-driven flow relation
+    %
+    % Insufficient/reverse pressure:
+    %     zero flow
+    % =========================================================
+
+    if Dp > dp_min
+
+        mdot_A == mdot_forward;
+
+    else
+
+        mdot_A == {0, 'kg/s'};
+
+    end
+
+
+    % =========================================================
+    % MASS CONSERVATION
+    % =========================================================
+
+    mdot_A + mdot_B == 0;
+
+
+    % =========================================================
+    % ENERGY CONVECTION
+    % =========================================================
+
+    convection_A.mdot == mdot_A;
+
+    convection_A.Phi == Phi_A;
+
+
+    convection_B.mdot == mdot_B;
+
+    convection_B.Phi == Phi_B;
+
+
+    % =========================================================
+    % TURBINE ENERGY RELATION
+    % =========================================================
+
+    convection_A.ht_I == h_A;
+
+    convection_B.ht_I == h_B;
+
+
+    % =========================================================
+    % OUTPUTS
+    % =========================================================
+
+    power_out == turbine_power;
+
+    enthalpy_drop_out == enthalpy_drop_active;
+
+    ideal_outlet_quality == quality_2s;
+
+    ideal_outlet_enthalpy == h_B_isentropic;
+
+    inlet_entropy == s_A;
+
+end
+
+annotations
+    power_out: Side = bottom;
+    enthalpy_drop_out: Side = bottom;
+    ideal_outlet_quality: Side = bottom;
+    ideal_outlet_enthalpy: Side = bottom;
+    inlet_entropy: Side = bottom;
+end
+
+
+end
