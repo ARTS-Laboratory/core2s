@@ -7,9 +7,9 @@
  *
  * Code generation for model "PW_SMRv7".
  *
- * Model version              : 1.12
+ * Model version              : 1.15
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C++ source code generated on : Fri Sep 25 17:42:48 2026
+ * C++ source code generated on : Mon Sep 28 12:13:55 2026
  *
  * Target selection: slrealtime.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -24,20 +24,20 @@
 P_PW_SMRv7_T PW_SMRv7_P = {
   /* Mask Parameter: DiscretePIDController_LowerSa_f
    * Referenced by:
-   *   '<S181>/Saturation'
-   *   '<S167>/DeadZone'
+   *   '<S191>/Saturation'
+   *   '<S177>/DeadZone'
    */
   0.0,
 
   /* Mask Parameter: DiscretePIDController_UpperSa_o
    * Referenced by:
-   *   '<S181>/Saturation'
-   *   '<S167>/DeadZone'
+   *   '<S191>/Saturation'
+   *   '<S177>/DeadZone'
    */
   0.0,
 
   /* Expression: inf
-   * Referenced by: '<S46>/Saturation'
+   * Referenced by: '<S51>/Saturation'
    */
   0.0
 };

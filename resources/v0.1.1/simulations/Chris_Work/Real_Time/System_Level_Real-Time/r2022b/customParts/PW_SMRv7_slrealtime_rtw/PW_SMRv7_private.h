@@ -7,9 +7,9 @@
  *
  * Code generation for model "PW_SMRv7".
  *
- * Model version              : 1.12
+ * Model version              : 1.15
  * Simulink Coder version : 9.8 (R2022b) 13-May-2022
- * C++ source code generated on : Fri Sep 25 17:42:48 2026
+ * C++ source code generated on : Mon Sep 28 12:13:55 2026
  *
  * Target selection: slrealtime.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping

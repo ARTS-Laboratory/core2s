@@ -45,8 +45,8 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   ETTS0 rd_efOut;
   ETTS0 s_efOut;
   ETTS0 sd_efOut;
-  ETTS0 t10;
-  ETTS0 t15;
+  ETTS0 t11;
+  ETTS0 t16;
   ETTS0 t25;
   ETTS0 t26;
   ETTS0 t28;
@@ -155,16 +155,18 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   real_T yd_efOut[1];
   real_T Pipe_TL1_alpha_I;
   real_T Pipe_TL1_rho_I;
+  real_T Steam_Generator_thermal_liquid_DuDp_out;
   real_T Steam_Generator_two_phase_fluid_DrhoDp_out_vap;
   real_T Steam_Generator_two_phase_fluid_Pr_liq;
   real_T Steam_Generator_two_phase_fluid_cp_vap_;
   real_T intrm_sf_mf_280;
   real_T intrm_sf_mf_424;
+  real_T intrm_sf_mf_425;
+  real_T intrm_sf_mf_427;
   real_T t428_idx_0;
-  real_T t510;
+  real_T t509;
   real_T t513;
   real_T t517;
-  real_T t518;
   real_T t520;
   real_T t522;
   real_T t524;
@@ -173,8 +175,8 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   real_T t535;
   real_T t536;
   real_T t537;
+  real_T t538;
   real_T t539;
-  real_T t540;
   real_T t544;
   real_T t546;
   real_T t550;
@@ -204,10 +206,8 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   real_T t586;
   real_T t587;
   real_T t588;
-  real_T t590;
   real_T t591;
   real_T t595;
-  real_T t596;
   real_T t597;
   real_T t598;
   real_T t599;
@@ -216,7 +216,6 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   real_T t604;
   real_T t605;
   real_T t606;
-  real_T t608;
   real_T t609;
   real_T t611;
   real_T t612;
@@ -237,32 +236,33 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   real_T t699;
   real_T t706;
   real_T t707;
-  real_T zc_int12;
-  real_T zc_int43;
-  real_T zc_int9;
+  real_T zc_int25;
+  real_T zc_int26;
+  real_T zc_int37;
+  real_T zc_int44;
   size_t t142[1];
   size_t t44[1];
   size_t t45[1];
   size_t t51[1];
   size_t t54[1];
   size_t t73[1];
-  int32_T M[129];
+  int32_T M[128];
   int32_T b;
-  boolean_T intrm_sf_mf_417;
-  boolean_T intrm_sf_mf_418;
   boolean_T intrm_sf_mf_419;
   boolean_T intrm_sf_mf_420;
   boolean_T intrm_sf_mf_421;
+  boolean_T intrm_sf_mf_422;
   boolean_T intrm_sf_mf_433;
-  boolean_T intrm_sf_mf_435;
+  boolean_T intrm_sf_mf_434;
   boolean_T intrm_sf_mf_436;
   boolean_T intrm_sf_mf_437;
-  boolean_T intrm_sf_mf_439;
+  boolean_T intrm_sf_mf_438;
   boolean_T intrm_sf_mf_440;
-  boolean_T intrm_sf_mf_449;
+  boolean_T intrm_sf_mf_441;
   boolean_T intrm_sf_mf_450;
   boolean_T intrm_sf_mf_451;
   boolean_T intrm_sf_mf_452;
+  boolean_T intrm_sf_mf_453;
   boolean_T intrm_sf_mf_50;
   boolean_T intrm_sf_mf_51;
   boolean_T intrm_sf_mf_53;
@@ -274,7 +274,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   boolean_T intrm_sf_mf_68;
   boolean_T intrm_sf_mf_69;
   boolean_T intrm_sf_mf_70;
-  for (b = 0; b < 129; b++) {
+  for (b = 0; b < 128; b++) {
     M[b] = t708->mM.mX[b];
   }
 
@@ -333,30 +333,30 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   tlu2_1d_linear_linear_value(&j_efOut[0ULL], &t26.mField0[0ULL], &t26.mField2
     [0ULL], ((_NeDynamicSystem*)(LC))->mField3, &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = j_efOut[0];
-  zc_int43 = t428_idx_0;
+  zc_int44 = t428_idx_0;
   tlu2_1d_linear_linear_value(&k_efOut[0ULL], &t26.mField0[0ULL], &t26.mField2
     [0ULL], ((_NeDynamicSystem*)(LC))->mField4, &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = k_efOut[0];
-  zc_int12 = t428_idx_0;
-  if (X[7ULL] <= zc_int43) {
-    t510 = X[7ULL] / (zc_int43 == 0.0 ? 1.0E-16 : zc_int43) - 1.0;
+  zc_int37 = t428_idx_0;
+  if (X[7ULL] <= zc_int44) {
+    t509 = X[7ULL] / (zc_int44 == 0.0 ? 1.0E-16 : zc_int44) - 1.0;
   } else if (X[7ULL] >= t428_idx_0) {
-    t510 = (X[7ULL] - 4000.0) / (4000.0 - t428_idx_0 == 0.0 ? 1.0E-16 : 4000.0 -
+    t509 = (X[7ULL] - 4000.0) / (4000.0 - t428_idx_0 == 0.0 ? 1.0E-16 : 4000.0 -
       t428_idx_0) + 2.0;
   } else {
-    t539 = t428_idx_0 - zc_int43;
-    t510 = (X[7ULL] - zc_int43) / (t539 == 0.0 ? 1.0E-16 : t539);
+    t539 = t428_idx_0 - zc_int44;
+    t509 = (X[7ULL] - zc_int44) / (t539 == 0.0 ? 1.0E-16 : t539);
   }
 
-  t535 = t510 < 0.0 ? t510 : 0.0;
-  if (X[8ULL] <= zc_int43) {
-    t536 = X[8ULL] / (zc_int43 == 0.0 ? 1.0E-16 : zc_int43) - 1.0;
+  t535 = t509 < 0.0 ? t509 : 0.0;
+  if (X[8ULL] <= zc_int44) {
+    t536 = X[8ULL] / (zc_int44 == 0.0 ? 1.0E-16 : zc_int44) - 1.0;
   } else if (X[8ULL] >= t428_idx_0) {
     t536 = (X[8ULL] - 4000.0) / (4000.0 - t428_idx_0 == 0.0 ? 1.0E-16 : 4000.0 -
       t428_idx_0) + 2.0;
   } else {
-    t544 = t428_idx_0 - zc_int43;
-    t536 = (X[8ULL] - zc_int43) / (t544 == 0.0 ? 1.0E-16 : t544);
+    t544 = t428_idx_0 - zc_int44;
+    t536 = (X[8ULL] - zc_int44) / (t544 == 0.0 ? 1.0E-16 : t544);
   }
 
   t537 = t536 < 0.0 ? t536 : 0.0;
@@ -375,7 +375,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     [0ULL], &t37.mField0[0ULL], &t37.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField10, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = n_efOut[0];
-  zc_int9 = t428_idx_0;
+  t538 = t428_idx_0;
   tlu2_2d_linear_nearest_value(&o_efOut[0ULL], &t34.mField0[0ULL], &t34.mField2
     [0ULL], &t37.mField0[0ULL], &t37.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField8, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
@@ -385,21 +385,21 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     [0ULL], &t37.mField0[0ULL], &t37.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField11, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = p_efOut[0];
-  zc_int9 = zc_int9 * t539 / (t428_idx_0 == 0.0 ? 1.0E-16 : t428_idx_0);
+  t538 = t538 * t539 / (t428_idx_0 == 0.0 ? 1.0E-16 : t428_idx_0);
   t539 = X[9ULL] >= 0.0 ? X[9ULL] : 0.0;
-  t540 = X[10ULL] >= 0.0 ? X[10ULL] : 0.0;
-  t517 = zc_int9 * t540;
+  zc_int25 = X[10ULL] >= 0.0 ? X[10ULL] : 0.0;
+  t517 = t538 * zc_int25;
   t676 = t517 + X[59ULL];
   Pipe_TL1_alpha_I = t539 + X[59ULL];
-  t518 = t676 / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 : Pipe_TL1_alpha_I);
-  if (t518 <= 1.0) {
-    t520 = 1.0 - t518 * 0.999999;
+  zc_int26 = t676 / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 : Pipe_TL1_alpha_I);
+  if (zc_int26 <= 1.0) {
+    t520 = 1.0 - zc_int26 * 0.999999;
   } else {
     t520 = 1.0E-6;
   }
 
-  if (t518 >= 1.0) {
-    t544 = t518 * 1.000001 - 1.0;
+  if (zc_int26 >= 1.0) {
+    t544 = zc_int26 * 1.000001 - 1.0;
   } else {
     t544 = 1.0E-6;
   }
@@ -417,7 +417,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   }
 
   t517 = t522 <= 15.0 ? t522 : 15.0;
-  t484[0ULL] = t510;
+  t484[0ULL] = t509;
   tlu2_linear_linear_prelookup(&q_efOut.mField0[0ULL], &q_efOut.mField1[0ULL],
     &q_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField1, &t484[0ULL],
     &t73[0ULL], &t45[0ULL]);
@@ -438,12 +438,12 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ->mField0, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = t_efOut[0];
   t524 = t428_idx_0;
-  t550 = X[6ULL] * t428_idx_0 * 100.0 + zc_int43;
-  zc_int43 = (t550 - t546) / (zc_int9 == 0.0 ? 1.0E-16 : zc_int9);
+  t550 = X[6ULL] * t428_idx_0 * 100.0 + zc_int44;
+  zc_int44 = (t550 - t546) / (t538 == 0.0 ? 1.0E-16 : t538);
   t554 = (1.0 - pmf_exp(-t517)) * X[58ULL];
   t555 = pmf_exp(-t517) * t544 + t520;
   t551 = t554 / (t555 == 0.0 ? 1.0E-16 : t555);
-  intrm_sf_mf_67 = (t551 > zc_int43 * 1000.0);
+  intrm_sf_mf_67 = (t551 > zc_int44 * 1000.0);
   intrm_sf_mf_51 = (t546 < t550);
   intrm_sf_mf_53 = (t546 > t550);
   t480[0] = 1.0;
@@ -456,29 +456,29 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ->mField0, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = v_efOut[0];
   t552 = t428_idx_0;
-  t553 = X[6ULL] * t428_idx_0 * 100.0 + zc_int12;
+  t553 = X[6ULL] * t428_idx_0 * 100.0 + zc_int37;
   intrm_sf_mf_54 = (t546 > t553);
   intrm_sf_mf_57 = (X[58ULL] < 0.0);
   intrm_sf_mf_58 = (X[58ULL] > 0.0);
   if (intrm_sf_mf_58) {
     if (intrm_sf_mf_51) {
       if (intrm_sf_mf_67) {
-        t557 = X[58ULL] - t520 * zc_int43 * 1000.0;
-        t533 = pmf_log((t544 * zc_int43 * 1000.0 + X[58ULL]) / (t557 == 0.0 ?
+        t557 = X[58ULL] - t520 * zc_int44 * 1000.0;
+        t533 = pmf_log((t544 * zc_int44 * 1000.0 + X[58ULL]) / (t557 == 0.0 ?
           1.0E-16 : t557));
-        zc_int12 = t533 / (t517 == 0.0 ? 1.0E-16 : t517);
+        zc_int37 = t533 / (t517 == 0.0 ? 1.0E-16 : t517);
       } else {
-        zc_int12 = 1.0;
+        zc_int37 = 1.0;
       }
     } else {
-      zc_int12 = 0.0;
+      zc_int37 = 0.0;
     }
   } else {
-    zc_int12 = intrm_sf_mf_57 ? intrm_sf_mf_54 ? 0.0 : (real_T)!intrm_sf_mf_53 :
+    zc_int37 = intrm_sf_mf_57 ? intrm_sf_mf_54 ? 0.0 : (real_T)!intrm_sf_mf_53 :
       (real_T)intrm_sf_mf_51;
   }
 
-  t554 = t510 > 1.0 ? t510 : 1.0;
+  t554 = t509 > 1.0 ? t509 : 1.0;
   t555 = t536 > 1.0 ? t536 : 1.0;
   t429[0ULL] = (t554 + t555) / 2.0;
   tlu2_linear_nearest_prelookup(&w_efOut.mField0[0ULL], &w_efOut.mField1[0ULL],
@@ -500,17 +500,17 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ((_NeDynamicSystem*)(LC))->mField11, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = ab_efOut[0];
   t556 = t556 * t557 / (t428_idx_0 == 0.0 ? 1.0E-16 : t428_idx_0);
-  t557 = t556 * t540;
-  t540 = (X[59ULL] + t557) / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 :
+  t557 = t556 * zc_int25;
+  zc_int25 = (X[59ULL] + t557) / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 :
     Pipe_TL1_alpha_I);
-  if (t540 <= 1.0) {
-    t533 = 1.0 - t540 * 0.999999;
+  if (zc_int25 <= 1.0) {
+    t533 = 1.0 - zc_int25 * 0.999999;
   } else {
     t533 = 1.0E-6;
   }
 
-  if (t540 >= 1.0) {
-    t699 = t540 * 1.000001 - 1.0;
+  if (zc_int25 >= 1.0) {
+    t699 = zc_int25 * 1.000001 - 1.0;
   } else {
     t699 = 1.0E-6;
   }
@@ -554,41 +554,41 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     t561 = intrm_sf_mf_51 ? 0.0 : (real_T)!intrm_sf_mf_55;
   }
 
-  t563 = (1.0 - zc_int12) - t561;
-  zc_int12 = t676 / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 : Pipe_TL1_alpha_I) /
-    (zc_int9 == 0.0 ? 1.0E-16 : zc_int9);
+  t563 = (1.0 - zc_int37) - t561;
+  zc_int37 = t676 / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 : Pipe_TL1_alpha_I) /
+    (t538 == 0.0 ? 1.0E-16 : t538);
   t561 = X[13ULL] / (Pipe_TL1_alpha_I == 0.0 ? 1.0E-16 : Pipe_TL1_alpha_I);
   t676 = t561 <= 15.0 ? t561 : 15.0;
   if (intrm_sf_mf_58) {
     if (intrm_sf_mf_51) {
       if (intrm_sf_mf_67) {
-        t561 = (t518 - 1.0) * zc_int43 * 1000.0 + X[58ULL];
+        t561 = (zc_int26 - 1.0) * zc_int44 * 1000.0 + X[58ULL];
       } else {
-        t561 = (t518 * t551 + X[58ULL]) - zc_int43 * 1000.0;
+        t561 = (zc_int26 * t551 + X[58ULL]) - zc_int44 * 1000.0;
       }
     } else if (intrm_sf_mf_50) {
       t561 = X[58ULL];
     } else {
-      t561 = (t540 * t684 + X[58ULL]) - t557 * 1000.0;
+      t561 = (zc_int25 * t684 + X[58ULL]) - t557 * 1000.0;
     }
   } else if (intrm_sf_mf_57) {
     if (intrm_sf_mf_54) {
       if (intrm_sf_mf_68) {
-        t561 = (t540 - 1.0) * t557 * 1000.0 + X[58ULL];
+        t561 = (zc_int25 - 1.0) * t557 * 1000.0 + X[58ULL];
       } else {
-        t561 = (t540 * t684 + X[58ULL]) - t557 * 1000.0;
+        t561 = (zc_int25 * t684 + X[58ULL]) - t557 * 1000.0;
       }
     } else if (intrm_sf_mf_53) {
       t561 = X[58ULL];
     } else {
-      t561 = (t518 * t551 + X[58ULL]) - zc_int43 * 1000.0;
+      t561 = (zc_int26 * t551 + X[58ULL]) - zc_int44 * 1000.0;
     }
   } else if (intrm_sf_mf_51) {
-    t561 = (t518 * t551 + X[58ULL]) - zc_int43 * 1000.0;
+    t561 = (zc_int26 * t551 + X[58ULL]) - zc_int44 * 1000.0;
   } else if (intrm_sf_mf_55) {
     t561 = X[58ULL];
   } else {
-    t561 = (t540 * t684 + X[58ULL]) - t557 * 1000.0;
+    t561 = (zc_int25 * t684 + X[58ULL]) - t557 * 1000.0;
   }
 
   if (intrm_sf_mf_58) {
@@ -596,7 +596,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
       if (intrm_sf_mf_67) {
         Pipe_TL1_alpha_I = t550;
       } else {
-        Pipe_TL1_alpha_I = zc_int9 * t551 * 0.001 + t546;
+        Pipe_TL1_alpha_I = t538 * t551 * 0.001 + t546;
       }
     } else if (intrm_sf_mf_50) {
       Pipe_TL1_alpha_I = t546;
@@ -613,10 +613,10 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     } else if (intrm_sf_mf_53) {
       Pipe_TL1_alpha_I = t546;
     } else {
-      Pipe_TL1_alpha_I = zc_int9 * t551 * 0.001 + t546;
+      Pipe_TL1_alpha_I = t538 * t551 * 0.001 + t546;
     }
   } else if (intrm_sf_mf_51) {
-    Pipe_TL1_alpha_I = zc_int9 * t551 * 0.001 + t546;
+    Pipe_TL1_alpha_I = t538 * t551 * 0.001 + t546;
   } else if (intrm_sf_mf_55) {
     Pipe_TL1_alpha_I = t546;
   } else {
@@ -624,15 +624,15 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   }
 
   t578 = (pmf_exp(t676 * t563) - 1.0) * t561;
-  t561 = t578 / (zc_int12 == 0.0 ? 1.0E-16 : zc_int12);
+  t561 = t578 / (zc_int37 == 0.0 ? 1.0E-16 : zc_int37);
   intrm_sf_mf_67 = (t561 * 0.001 > t553 - Pipe_TL1_alpha_I);
   intrm_sf_mf_68 = (Pipe_TL1_alpha_I < t553);
   intrm_sf_mf_69 = (t561 * 0.001 < t550 - Pipe_TL1_alpha_I);
   intrm_sf_mf_70 = (Pipe_TL1_alpha_I > t550);
-  intrm_sf_mf_449 = (t510 >= 1.0);
-  intrm_sf_mf_433 = (t510 <= 0.0);
-  intrm_sf_mf_435 = (t536 >= 1.0);
-  intrm_sf_mf_436 = (t536 <= 0.0);
+  intrm_sf_mf_450 = (t509 >= 1.0);
+  intrm_sf_mf_434 = (t509 <= 0.0);
+  intrm_sf_mf_436 = (t536 >= 1.0);
+  intrm_sf_mf_437 = (t536 <= 0.0);
   t429[0ULL] = t536;
   tlu2_linear_linear_prelookup(&bb_efOut.mField0[0ULL], &bb_efOut.mField1[0ULL],
     &bb_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField1, &t429[0ULL],
@@ -642,7 +642,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     [0ULL], &t26.mField0[0ULL], &t26.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField0, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t428_idx_0 = cb_efOut[0];
-  t510 = t428_idx_0;
+  t509 = t428_idx_0;
   tlu2_2d_linear_linear_value(&db_efOut[0ULL], &t41.mField0[0ULL], &t41.mField2
     [0ULL], &t39.mField0[0ULL], &t39.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField15, &t51[0ULL], &t54[0ULL], &t45[0ULL]);
@@ -733,9 +733,9 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ->mField21, &t142[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = sb_efOut[0];
   Pipe_TL1_alpha_I = t480[0ULL];
-  t564 = intrm_sf_mf_433 ? t524 : intrm_sf_mf_449 ? t552 : t522;
-  t522 = intrm_sf_mf_436 ? t524 : intrm_sf_mf_435 ? t552 : t510;
-  t510 = t564 <= t522 ? t564 : t522;
+  t564 = intrm_sf_mf_434 ? t524 : intrm_sf_mf_450 ? t552 : t522;
+  t522 = intrm_sf_mf_437 ? t524 : intrm_sf_mf_436 ? t552 : t509;
+  t509 = t564 <= t522 ? t564 : t522;
   if (t522 / (t564 == 0.0 ? 1.0E-16 : t564) >= 1.000001) {
     t566 = t522 / (t564 == 0.0 ? 1.0E-16 : t564);
   } else if (t564 / (t522 == 0.0 ? 1.0E-16 : t522) >= 1.000001) {
@@ -747,21 +747,21 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   t587 = pmf_log(t566);
   t591 = 1.000001 / (t524 == 0.0 ? 1.0E-16 : t524) - 1.0 / (t552 == 0.0 ?
     1.0E-16 : t552);
-  t510 = (1.000001 / (t524 == 0.0 ? 1.0E-16 : t524) - t587 / (t566 - 1.0 == 0.0 ?
-           1.0E-16 : t566 - 1.0) / (t510 == 0.0 ? 1.0E-16 : t510)) / (t591 ==
+  t509 = (1.000001 / (t524 == 0.0 ? 1.0E-16 : t524) - t587 / (t566 - 1.0 == 0.0 ?
+           1.0E-16 : t566 - 1.0) / (t509 == 0.0 ? 1.0E-16 : t509)) / (t591 ==
     0.0 ? 1.0E-16 : t591);
-  t522 = (1.0 - t510) * t537 + Pipe_TL1_alpha_I * t510;
+  t522 = (1.0 - t509) * t537 + Pipe_TL1_alpha_I * t509;
   t484[0ULL] = t555;
   tlu2_linear_linear_prelookup(&tb_efOut.mField0[0ULL], &tb_efOut.mField1[0ULL],
     &tb_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField22, &t484[0ULL],
     &t142[0ULL], &t45[0ULL]);
-  t15 = tb_efOut;
-  tlu2_2d_linear_linear_value(&ub_efOut[0ULL], &t15.mField0[0ULL], &t15.mField2
+  t16 = tb_efOut;
+  tlu2_2d_linear_linear_value(&ub_efOut[0ULL], &t16.mField0[0ULL], &t16.mField2
     [0ULL], &t26.mField0[0ULL], &t26.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField21, &t142[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ub_efOut[0];
-  t510 = t480[0ULL];
-  t510 = (t428_idx_0 + t510) / 2.0;
+  t509 = t480[0ULL];
+  t509 = (t428_idx_0 + t509) / 2.0;
   t484[0ULL] = X[16ULL];
   tlu2_linear_linear_prelookup(&vb_efOut.mField0[0ULL], &vb_efOut.mField1[0ULL],
     &vb_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField6, &t484[0ULL],
@@ -885,12 +885,12 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   tlu2_linear_linear_prelookup(&rc_efOut.mField0[0ULL], &rc_efOut.mField1[0ULL],
     &rc_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField2, &t484[0ULL],
     &t44[0ULL], &t45[0ULL]);
-  t15 = rc_efOut;
-  tlu2_1d_linear_linear_value(&sc_efOut[0ULL], &t15.mField0[0ULL], &t15.mField2
+  t16 = rc_efOut;
+  tlu2_1d_linear_linear_value(&sc_efOut[0ULL], &t16.mField0[0ULL], &t16.mField2
     [0ULL], ((_NeDynamicSystem*)(LC))->mField3, &t44[0ULL], &t45[0ULL]);
   t480[0] = sc_efOut[0];
   intrm_sf_mf_280 = t480[0ULL];
-  tlu2_1d_linear_linear_value(&tc_efOut[0ULL], &t15.mField0[0ULL], &t15.mField2
+  tlu2_1d_linear_linear_value(&tc_efOut[0ULL], &t16.mField0[0ULL], &t16.mField2
     [0ULL], ((_NeDynamicSystem*)(LC))->mField4, &t44[0ULL], &t45[0ULL]);
   t480[0] = tc_efOut[0];
   t581 = t480[0ULL];
@@ -910,7 +910,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     &t142[0ULL], &t45[0ULL]);
   t41 = uc_efOut;
   tlu2_2d_linear_linear_value(&vc_efOut[0ULL], &t41.mField0[0ULL], &t41.mField2
-    [0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL], ((_NeDynamicSystem*)(LC))
+    [0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField19, &t142[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = vc_efOut[0];
   intrm_sf_mf_280 = t480[0ULL];
@@ -918,9 +918,9 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   tlu2_linear_linear_prelookup(&wc_efOut.mField0[0ULL], &wc_efOut.mField1[0ULL],
     &wc_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField27, &t484[0ULL],
     &t73[0ULL], &t45[0ULL]);
-  t10 = wc_efOut;
-  tlu2_2d_linear_linear_value(&xc_efOut[0ULL], &t10.mField0[0ULL], &t10.mField2
-    [0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL], ((_NeDynamicSystem*)(LC))
+  t11 = wc_efOut;
+  tlu2_2d_linear_linear_value(&xc_efOut[0ULL], &t11.mField0[0ULL], &t11.mField2
+    [0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField26, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = xc_efOut[0];
   t581 = t480[0ULL];
@@ -930,7 +930,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     &t142[0ULL], &t45[0ULL]);
   t34 = yc_efOut;
   tlu2_2d_linear_linear_value(&ad_efOut[0ULL], &t34.mField0[0ULL], &t34.mField2
-    [0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL], ((_NeDynamicSystem*)(LC))
+    [0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField21, &t142[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ad_efOut[0];
   t670 = t480[0ULL];
@@ -977,9 +977,10 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ->mField32, &t142[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = gd_efOut[0];
   t586 = t480[0ULL];
-  t608 = X[28ULL] * t585 + X[29ULL] * t586;
-  t585 = t707 * (X[28ULL] * t585 / (t608 == 0.0 ? 1.0E-16 : t608) * 1.5) + t534 *
-    (X[29ULL] * t586 / (t608 == 0.0 ? 1.0E-16 : t608) * 1.5);
+  intrm_sf_mf_427 = X[28ULL] * t585 + X[29ULL] * t586;
+  t585 = t707 * (X[28ULL] * t585 / (intrm_sf_mf_427 == 0.0 ? 1.0E-16 :
+    intrm_sf_mf_427) * 1.5) + t534 * (X[29ULL] * t586 / (intrm_sf_mf_427 == 0.0 ?
+    1.0E-16 : intrm_sf_mf_427) * 1.5);
   tlu2_2d_linear_linear_value(&hd_efOut[0ULL], &t25.mField0[0ULL], &t25.mField2
     [0ULL], &t42.mField0[0ULL], &t42.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField0, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
@@ -996,13 +997,13 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   tlu2_linear_linear_prelookup(&jd_efOut.mField0[0ULL], &jd_efOut.mField1[0ULL],
     &jd_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField6, &t484[0ULL],
     &t51[0ULL], &t45[0ULL]);
-  t10 = jd_efOut;
+  t11 = jd_efOut;
   t484[0ULL] = X[31ULL];
   tlu2_linear_linear_prelookup(&kd_efOut.mField0[0ULL], &kd_efOut.mField1[0ULL],
     &kd_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField7, &t484[0ULL],
     &t54[0ULL], &t45[0ULL]);
   t38 = kd_efOut;
-  tlu2_2d_linear_linear_value(&ld_efOut[0ULL], &t10.mField0[0ULL], &t10.mField2
+  tlu2_2d_linear_linear_value(&ld_efOut[0ULL], &t11.mField0[0ULL], &t11.mField2
     [0ULL], &t38.mField0[0ULL], &t38.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField9, &t51[0ULL], &t54[0ULL], &t45[0ULL]);
   t480[0] = ld_efOut[0];
@@ -1029,27 +1030,30 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   tlu2_1d_linear_linear_value(&qd_efOut[0ULL], &t37.mField0[0ULL], &t37.mField2
     [0ULL], ((_NeDynamicSystem*)(LC))->mField4, &t44[0ULL], &t45[0ULL]);
   t480[0] = qd_efOut[0];
-  intrm_sf_mf_424 = t480[0ULL];
+  intrm_sf_mf_425 = t480[0ULL];
   if (X[34ULL] <= t588) {
-    t590 = X[34ULL] / (t588 == 0.0 ? 1.0E-16 : t588) - 1.0;
-  } else if (X[34ULL] >= intrm_sf_mf_424) {
-    t590 = (X[34ULL] - 4000.0) / (4000.0 - intrm_sf_mf_424 == 0.0 ? 1.0E-16 :
-      4000.0 - intrm_sf_mf_424) + 2.0;
+    Steam_Generator_thermal_liquid_DuDp_out = X[34ULL] / (t588 == 0.0 ? 1.0E-16 :
+      t588) - 1.0;
+  } else if (X[34ULL] >= intrm_sf_mf_425) {
+    Steam_Generator_thermal_liquid_DuDp_out = (X[34ULL] - 4000.0) / (4000.0 -
+      intrm_sf_mf_425 == 0.0 ? 1.0E-16 : 4000.0 - intrm_sf_mf_425) + 2.0;
   } else {
-    t428_idx_0 = intrm_sf_mf_424 - t588;
-    t590 = (X[34ULL] - t588) / (t428_idx_0 == 0.0 ? 1.0E-16 : t428_idx_0);
+    t428_idx_0 = intrm_sf_mf_425 - t588;
+    Steam_Generator_thermal_liquid_DuDp_out = (X[34ULL] - t588) / (t428_idx_0 ==
+      0.0 ? 1.0E-16 : t428_idx_0);
   }
 
-  t591 = t590 < 0.0 ? t590 : 0.0;
+  t591 = Steam_Generator_thermal_liquid_DuDp_out < 0.0 ?
+    Steam_Generator_thermal_liquid_DuDp_out : 0.0;
   if (X[35ULL] <= t588) {
     Steam_Generator_two_phase_fluid_DrhoDp_out_vap = X[35ULL] / (t588 == 0.0 ?
       1.0E-16 : t588) - 1.0;
-  } else if (X[35ULL] >= intrm_sf_mf_424) {
+  } else if (X[35ULL] >= intrm_sf_mf_425) {
     Steam_Generator_two_phase_fluid_DrhoDp_out_vap = (X[35ULL] - 4000.0) /
-      (4000.0 - intrm_sf_mf_424 == 0.0 ? 1.0E-16 : 4000.0 - intrm_sf_mf_424) +
+      (4000.0 - intrm_sf_mf_425 == 0.0 ? 1.0E-16 : 4000.0 - intrm_sf_mf_425) +
       2.0;
   } else {
-    t620 = intrm_sf_mf_424 - t588;
+    t620 = intrm_sf_mf_425 - t588;
     Steam_Generator_two_phase_fluid_DrhoDp_out_vap = (X[35ULL] - t588) / (t620 ==
       0.0 ? 1.0E-16 : t620);
   }
@@ -1065,34 +1069,34 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   tlu2_linear_nearest_prelookup(&sd_efOut.mField0[0ULL], &sd_efOut.mField1[0ULL],
     &sd_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField2, &t484[0ULL],
     &t44[0ULL], &t45[0ULL]);
-  t15 = sd_efOut;
+  t16 = sd_efOut;
   tlu2_2d_linear_nearest_value(&td_efOut[0ULL], &t41.mField0[0ULL],
-    &t41.mField2[0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL],
+    &t41.mField2[0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL],
     ((_NeDynamicSystem*)(LC))->mField10, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = td_efOut[0];
   Steam_Generator_two_phase_fluid_Pr_liq = t480[0ULL];
   tlu2_2d_linear_nearest_value(&ud_efOut[0ULL], &t41.mField0[0ULL],
-    &t41.mField2[0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL],
+    &t41.mField2[0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL],
     ((_NeDynamicSystem*)(LC))->mField8, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ud_efOut[0];
   t595 = t480[0ULL];
   tlu2_2d_linear_nearest_value(&vd_efOut[0ULL], &t41.mField0[0ULL],
-    &t41.mField2[0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL],
+    &t41.mField2[0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL],
     ((_NeDynamicSystem*)(LC))->mField11, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = vd_efOut[0];
-  t596 = t480[0ULL];
+  intrm_sf_mf_424 = t480[0ULL];
   Steam_Generator_two_phase_fluid_Pr_liq =
-    Steam_Generator_two_phase_fluid_Pr_liq * t595 / (t596 == 0.0 ? 1.0E-16 :
-    t596);
+    Steam_Generator_two_phase_fluid_Pr_liq * t595 / (intrm_sf_mf_424 == 0.0 ?
+    1.0E-16 : intrm_sf_mf_424);
   t595 = X[37ULL] >= 0.0 ? X[37ULL] : 0.0;
-  t596 = X[38ULL] >= 0.0 ? X[38ULL] : 0.0;
+  intrm_sf_mf_424 = X[38ULL] >= 0.0 ? X[38ULL] : 0.0;
   t651 = t595 + X[164ULL];
   t428_idx_0 = (t595 + X[164ULL]) * (1.0 - pmf_exp(-X[36ULL] / (t651 == 0.0 ?
     1.0E-16 : t651)));
-  t647 = Steam_Generator_two_phase_fluid_Pr_liq * t596 + X[164ULL];
+  t647 = Steam_Generator_two_phase_fluid_Pr_liq * intrm_sf_mf_424 + X[164ULL];
   t597 = t428_idx_0 / (t647 == 0.0 ? 1.0E-16 : t647);
   t598 = t597 <= 15.0 ? t597 : 15.0;
-  t484[0ULL] = t590;
+  t484[0ULL] = Steam_Generator_thermal_liquid_DuDp_out;
   tlu2_linear_linear_prelookup(&wd_efOut.mField0[0ULL], &wd_efOut.mField1[0ULL],
     &wd_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField1, &t484[0ULL],
     &t73[0ULL], &t45[0ULL]);
@@ -1112,36 +1116,37 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   t588 = (t601 - t599) / (Steam_Generator_two_phase_fluid_Pr_liq == 0.0 ?
     1.0E-16 : Steam_Generator_two_phase_fluid_Pr_liq);
   t602 = (1.0 - pmf_exp(-t598)) * X[163ULL];
-  intrm_sf_mf_449 = (t602 > t588 * 1000.0);
-  intrm_sf_mf_433 = (t599 < t601);
-  intrm_sf_mf_435 = (t599 > t601);
+  intrm_sf_mf_450 = (t602 > t588 * 1000.0);
+  intrm_sf_mf_434 = (t599 < t601);
+  intrm_sf_mf_436 = (t599 > t601);
   tlu2_2d_linear_linear_value(&ae_efOut[0ULL], &t28.mField0[0ULL], &t28.mField2
     [0ULL], &t37.mField0[0ULL], &t37.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField0, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ae_efOut[0];
   t659 = t480[0ULL];
-  t604 = X[33ULL] * t659 * 100.0 + intrm_sf_mf_424;
-  intrm_sf_mf_436 = (t599 > t604);
-  intrm_sf_mf_439 = (X[163ULL] < 0.0);
-  intrm_sf_mf_440 = (X[163ULL] > 0.0);
-  if (intrm_sf_mf_440) {
-    if (intrm_sf_mf_433) {
-      if (intrm_sf_mf_449) {
+  t604 = X[33ULL] * t659 * 100.0 + intrm_sf_mf_425;
+  intrm_sf_mf_437 = (t599 > t604);
+  intrm_sf_mf_440 = (X[163ULL] < 0.0);
+  intrm_sf_mf_441 = (X[163ULL] > 0.0);
+  if (intrm_sf_mf_441) {
+    if (intrm_sf_mf_434) {
+      if (intrm_sf_mf_450) {
         t428_idx_0 = -pmf_log((X[163ULL] - t588 * 1000.0) / (X[163ULL] == 0.0 ?
           1.0E-16 : X[163ULL]));
-        intrm_sf_mf_424 = t428_idx_0 / (t598 == 0.0 ? 1.0E-16 : t598);
+        intrm_sf_mf_425 = t428_idx_0 / (t598 == 0.0 ? 1.0E-16 : t598);
       } else {
-        intrm_sf_mf_424 = 1.0;
+        intrm_sf_mf_425 = 1.0;
       }
     } else {
-      intrm_sf_mf_424 = 0.0;
+      intrm_sf_mf_425 = 0.0;
     }
   } else {
-    intrm_sf_mf_424 = intrm_sf_mf_439 ? intrm_sf_mf_436 ? 0.0 : (real_T)
-      !intrm_sf_mf_435 : (real_T)intrm_sf_mf_433;
+    intrm_sf_mf_425 = intrm_sf_mf_440 ? intrm_sf_mf_437 ? 0.0 : (real_T)
+      !intrm_sf_mf_436 : (real_T)intrm_sf_mf_434;
   }
 
-  t605 = t590 > 1.0 ? t590 : 1.0;
+  t605 = Steam_Generator_thermal_liquid_DuDp_out > 1.0 ?
+    Steam_Generator_thermal_liquid_DuDp_out : 1.0;
   t606 = Steam_Generator_two_phase_fluid_DrhoDp_out_vap > 1.0 ?
     Steam_Generator_two_phase_fluid_DrhoDp_out_vap : 1.0;
   t484[0ULL] = (t605 + t606) / 2.0;
@@ -1150,42 +1155,43 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     &t73[0ULL], &t45[0ULL]);
   t34 = be_efOut;
   tlu2_2d_linear_nearest_value(&ce_efOut[0ULL], &t34.mField0[0ULL],
-    &t34.mField2[0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL],
+    &t34.mField2[0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL],
     ((_NeDynamicSystem*)(LC))->mField10, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ce_efOut[0];
   Steam_Generator_two_phase_fluid_cp_vap_ = t480[0ULL];
   tlu2_2d_linear_nearest_value(&de_efOut[0ULL], &t34.mField0[0ULL],
-    &t34.mField2[0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL],
+    &t34.mField2[0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL],
     ((_NeDynamicSystem*)(LC))->mField8, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = de_efOut[0];
-  t608 = t480[0ULL];
+  intrm_sf_mf_427 = t480[0ULL];
   tlu2_2d_linear_nearest_value(&ee_efOut[0ULL], &t34.mField0[0ULL],
-    &t34.mField2[0ULL], &t15.mField0[0ULL], &t15.mField2[0ULL],
+    &t34.mField2[0ULL], &t16.mField0[0ULL], &t16.mField2[0ULL],
     ((_NeDynamicSystem*)(LC))->mField11, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ee_efOut[0];
   t609 = t480[0ULL];
   Steam_Generator_two_phase_fluid_cp_vap_ =
-    Steam_Generator_two_phase_fluid_cp_vap_ * t608 / (t609 == 0.0 ? 1.0E-16 :
-    t609);
+    Steam_Generator_two_phase_fluid_cp_vap_ * intrm_sf_mf_427 / (t609 == 0.0 ?
+    1.0E-16 : t609);
   t620 = (t595 + X[164ULL]) * (1.0 - pmf_exp(-X[39ULL] / (t651 == 0.0 ? 1.0E-16 :
     t651)));
-  t428_idx_0 = X[164ULL] + Steam_Generator_two_phase_fluid_cp_vap_ * t596;
-  t596 = t620 / (t428_idx_0 == 0.0 ? 1.0E-16 : t428_idx_0);
-  t608 = t596 <= 15.0 ? t596 : 15.0;
-  t596 = (t604 - t599) / (Steam_Generator_two_phase_fluid_cp_vap_ == 0.0 ?
-    1.0E-16 : Steam_Generator_two_phase_fluid_cp_vap_);
-  intrm_sf_mf_417 = (t599 < t604);
-  t609 = (1.0 - pmf_exp(-t608)) * X[163ULL];
-  intrm_sf_mf_450 = (t609 < t596 * 1000.0);
-  intrm_sf_mf_437 = (t599 <= t604);
-  if (intrm_sf_mf_440) {
-    t611 = intrm_sf_mf_433 ? 0.0 : (real_T)!intrm_sf_mf_417;
-  } else if (intrm_sf_mf_439) {
-    if (intrm_sf_mf_436) {
-      if (intrm_sf_mf_450) {
-        t428_idx_0 = -pmf_log((X[163ULL] - t596 * 1000.0) / (X[163ULL] == 0.0 ?
-          1.0E-16 : X[163ULL]));
-        t611 = t428_idx_0 / (t608 == 0.0 ? 1.0E-16 : t608);
+  t428_idx_0 = X[164ULL] + Steam_Generator_two_phase_fluid_cp_vap_ *
+    intrm_sf_mf_424;
+  intrm_sf_mf_424 = t620 / (t428_idx_0 == 0.0 ? 1.0E-16 : t428_idx_0);
+  intrm_sf_mf_427 = intrm_sf_mf_424 <= 15.0 ? intrm_sf_mf_424 : 15.0;
+  intrm_sf_mf_424 = (t604 - t599) / (Steam_Generator_two_phase_fluid_cp_vap_ ==
+    0.0 ? 1.0E-16 : Steam_Generator_two_phase_fluid_cp_vap_);
+  intrm_sf_mf_433 = (t599 < t604);
+  t609 = (1.0 - pmf_exp(-intrm_sf_mf_427)) * X[163ULL];
+  intrm_sf_mf_451 = (t609 < intrm_sf_mf_424 * 1000.0);
+  intrm_sf_mf_438 = (t599 <= t604);
+  if (intrm_sf_mf_441) {
+    t611 = intrm_sf_mf_434 ? 0.0 : (real_T)!intrm_sf_mf_433;
+  } else if (intrm_sf_mf_440) {
+    if (intrm_sf_mf_437) {
+      if (intrm_sf_mf_451) {
+        t428_idx_0 = -pmf_log((X[163ULL] - intrm_sf_mf_424 * 1000.0) / (X[163ULL]
+          == 0.0 ? 1.0E-16 : X[163ULL]));
+        t611 = t428_idx_0 / (intrm_sf_mf_427 == 0.0 ? 1.0E-16 : intrm_sf_mf_427);
       } else {
         t611 = 1.0;
       }
@@ -1193,91 +1199,91 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
       t611 = 0.0;
     }
   } else {
-    t611 = intrm_sf_mf_433 ? 0.0 : (real_T)!intrm_sf_mf_437;
+    t611 = intrm_sf_mf_434 ? 0.0 : (real_T)!intrm_sf_mf_438;
   }
 
-  t612 = (1.0 - intrm_sf_mf_424) - t611;
+  t612 = (1.0 - intrm_sf_mf_425) - t611;
   t620 = (t595 + X[164ULL]) * (1.0 - pmf_exp(-X[40ULL] / (t651 == 0.0 ? 1.0E-16 :
     t651)));
   t651 = t647 / (Steam_Generator_two_phase_fluid_Pr_liq == 0.0 ? 1.0E-16 :
                  Steam_Generator_two_phase_fluid_Pr_liq);
-  intrm_sf_mf_424 = t620 / (t651 == 0.0 ? 1.0E-16 : t651);
-  if (intrm_sf_mf_440) {
-    if (intrm_sf_mf_433) {
+  intrm_sf_mf_425 = t620 / (t651 == 0.0 ? 1.0E-16 : t651);
+  if (intrm_sf_mf_441) {
+    if (intrm_sf_mf_434) {
       t595 = X[163ULL] - t588 * 1000.0;
-    } else if (intrm_sf_mf_417) {
+    } else if (intrm_sf_mf_433) {
       t595 = X[163ULL];
     } else {
-      t595 = X[163ULL] - t596 * 1000.0;
+      t595 = X[163ULL] - intrm_sf_mf_424 * 1000.0;
     }
-  } else if (intrm_sf_mf_439) {
-    if (intrm_sf_mf_436) {
-      t595 = X[163ULL] - t596 * 1000.0;
-    } else if (intrm_sf_mf_435) {
+  } else if (intrm_sf_mf_440) {
+    if (intrm_sf_mf_437) {
+      t595 = X[163ULL] - intrm_sf_mf_424 * 1000.0;
+    } else if (intrm_sf_mf_436) {
       t595 = X[163ULL];
     } else {
       t595 = X[163ULL] - t588 * 1000.0;
     }
-  } else if (intrm_sf_mf_433) {
+  } else if (intrm_sf_mf_434) {
     t595 = t588 * 1000.0 + X[163ULL];
-  } else if (intrm_sf_mf_437) {
+  } else if (intrm_sf_mf_438) {
     t595 = X[163ULL];
   } else {
-    t595 = t596 * 1000.0 + X[163ULL];
+    t595 = intrm_sf_mf_424 * 1000.0 + X[163ULL];
   }
 
-  if (intrm_sf_mf_440) {
-    if (intrm_sf_mf_433) {
-      if (intrm_sf_mf_449) {
+  if (intrm_sf_mf_441) {
+    if (intrm_sf_mf_434) {
+      if (intrm_sf_mf_450) {
         t611 = t601;
       } else {
         t611 = Steam_Generator_two_phase_fluid_Pr_liq * t602 * 0.001 + t599;
       }
-    } else if (intrm_sf_mf_417) {
+    } else if (intrm_sf_mf_433) {
       t611 = t599;
     } else {
       t611 = Steam_Generator_two_phase_fluid_cp_vap_ * t609 * 0.001 + t599;
     }
-  } else if (intrm_sf_mf_439) {
-    if (intrm_sf_mf_436) {
-      if (intrm_sf_mf_450) {
+  } else if (intrm_sf_mf_440) {
+    if (intrm_sf_mf_437) {
+      if (intrm_sf_mf_451) {
         t611 = t604;
       } else {
         t611 = Steam_Generator_two_phase_fluid_cp_vap_ * t609 * 0.001 + t599;
       }
-    } else if (intrm_sf_mf_435) {
+    } else if (intrm_sf_mf_436) {
       t611 = t599;
     } else {
       t611 = Steam_Generator_two_phase_fluid_Pr_liq * t602 * 0.001 + t599;
     }
-  } else if (intrm_sf_mf_433) {
+  } else if (intrm_sf_mf_434) {
     t611 = Steam_Generator_two_phase_fluid_Pr_liq * t602 * 0.001 + t599;
-  } else if (intrm_sf_mf_437) {
+  } else if (intrm_sf_mf_438) {
     t611 = t599;
   } else {
     t611 = Steam_Generator_two_phase_fluid_cp_vap_ * t609 * 0.001 + t599;
   }
 
-  t428_idx_0 = intrm_sf_mf_424 * t595 * t612;
-  intrm_sf_mf_449 = (t428_idx_0 * 0.001 > t604 - t611);
-  intrm_sf_mf_450 = (t611 < t604);
-  intrm_sf_mf_451 = (t428_idx_0 * 0.001 < t601 - t611);
-  intrm_sf_mf_452 = (t611 > t601);
-  intrm_sf_mf_418 = (t590 >= 1.0);
-  intrm_sf_mf_419 = (t590 <= 0.0);
-  intrm_sf_mf_420 = (Steam_Generator_two_phase_fluid_DrhoDp_out_vap >= 1.0);
-  intrm_sf_mf_421 = (Steam_Generator_two_phase_fluid_DrhoDp_out_vap <= 0.0);
-  tlu2_2d_linear_linear_value(&fe_efOut[0ULL], &t10.mField0[0ULL], &t10.mField2
+  t428_idx_0 = intrm_sf_mf_425 * t595 * t612;
+  intrm_sf_mf_450 = (t428_idx_0 * 0.001 > t604 - t611);
+  intrm_sf_mf_451 = (t611 < t604);
+  intrm_sf_mf_452 = (t428_idx_0 * 0.001 < t601 - t611);
+  intrm_sf_mf_453 = (t611 > t601);
+  intrm_sf_mf_419 = (Steam_Generator_thermal_liquid_DuDp_out >= 1.0);
+  intrm_sf_mf_420 = (Steam_Generator_thermal_liquid_DuDp_out <= 0.0);
+  intrm_sf_mf_421 = (Steam_Generator_two_phase_fluid_DrhoDp_out_vap >= 1.0);
+  intrm_sf_mf_422 = (Steam_Generator_two_phase_fluid_DrhoDp_out_vap <= 0.0);
+  tlu2_2d_linear_linear_value(&fe_efOut[0ULL], &t11.mField0[0ULL], &t11.mField2
     [0ULL], &t38.mField0[0ULL], &t38.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField15, &t51[0ULL], &t54[0ULL], &t45[0ULL]);
   t480[0] = fe_efOut[0];
-  t590 = t480[0ULL];
-  tlu2_2d_linear_linear_value(&ge_efOut[0ULL], &t10.mField0[0ULL], &t10.mField2
+  Steam_Generator_thermal_liquid_DuDp_out = t480[0ULL];
+  tlu2_2d_linear_linear_value(&ge_efOut[0ULL], &t11.mField0[0ULL], &t11.mField2
     [0ULL], &t38.mField0[0ULL], &t38.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField16, &t51[0ULL], &t54[0ULL], &t45[0ULL]);
   t480[0] = ge_efOut[0];
   t611 = t480[0ULL];
-  t612 = -t611 * t590;
+  t612 = -t611 * Steam_Generator_thermal_liquid_DuDp_out;
   tlu2_2d_linear_linear_value(&he_efOut[0ULL], &t26.mField0[0ULL], &t26.mField2
     [0ULL], &t38.mField0[0ULL], &t38.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField15, &t51[0ULL], &t54[0ULL], &t45[0ULL]);
@@ -1289,7 +1295,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   t480[0] = ie_efOut[0];
   t647 = t480[0ULL];
   t428_idx_0 = -t647 * t651;
-  tlu2_2d_linear_linear_value(&je_efOut[0ULL], &t10.mField0[0ULL], &t10.mField2
+  tlu2_2d_linear_linear_value(&je_efOut[0ULL], &t11.mField0[0ULL], &t11.mField2
     [0ULL], &t38.mField0[0ULL], &t38.mField2[0ULL], ((_NeDynamicSystem*)(LC))
     ->mField17, &t51[0ULL], &t54[0ULL], &t45[0ULL]);
   t480[0] = je_efOut[0];
@@ -1301,12 +1307,14 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   t480[0] = ke_efOut[0];
   t655 = t480[0ULL];
   t619 = t647 / (t655 == 0.0 ? 1.0E-16 : t655);
-  t620 = t534 - t590 * X[31ULL] / (t611 == 0.0 ? 1.0E-16 : t611) * 100000.0;
+  t620 = t534 - Steam_Generator_thermal_liquid_DuDp_out * X[31ULL] / (t611 ==
+    0.0 ? 1.0E-16 : t611) * 100000.0;
   t534 = t587 - t651 * X[31ULL] / (t647 == 0.0 ? 1.0E-16 : t647) * 100000.0;
-  t587 = (X[31ULL] / (t658 == 0.0 ? 1.0E-16 : t658) - X[30ULL] * t590) / (t611 ==
-    0.0 ? 1.0E-16 : t611);
-  t590 = (X[31ULL] / (t655 == 0.0 ? 1.0E-16 : t655) - X[32ULL] * t651) / (t647 ==
-    0.0 ? 1.0E-16 : t647);
+  t587 = (X[31ULL] / (t658 == 0.0 ? 1.0E-16 : t658) - X[30ULL] *
+          Steam_Generator_thermal_liquid_DuDp_out) / (t611 == 0.0 ? 1.0E-16 :
+    t611);
+  Steam_Generator_thermal_liquid_DuDp_out = (X[31ULL] / (t655 == 0.0 ? 1.0E-16 :
+    t655) - X[32ULL] * t651) / (t647 == 0.0 ? 1.0E-16 : t647);
   t611 = (t611 + t647) / 2.0 * 0.36562301792487523;
   t484[0ULL] = t591;
   tlu2_linear_linear_prelookup(&le_efOut.mField0[0ULL], &le_efOut.mField1[0ULL],
@@ -1349,7 +1357,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ->mField21, &t142[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = se_efOut[0];
   t651 = t480[0ULL];
-  t647 = intrm_sf_mf_419 ? t660 : intrm_sf_mf_418 ? t659 : t597;
+  t647 = intrm_sf_mf_420 ? t660 : intrm_sf_mf_419 ? t659 : t597;
   t484[0ULL] = Steam_Generator_two_phase_fluid_DrhoDp_out_vap;
   tlu2_linear_linear_prelookup(&te_efOut.mField0[0ULL], &te_efOut.mField1[0ULL],
     &te_efOut.mField2[0ULL], ((_NeDynamicSystem*)(LC))->mField1, &t484[0ULL],
@@ -1360,7 +1368,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
     ->mField0, &t73[0ULL], &t44[0ULL], &t45[0ULL]);
   t480[0] = ue_efOut[0];
   Steam_Generator_two_phase_fluid_DrhoDp_out_vap = t480[0ULL];
-  t597 = intrm_sf_mf_421 ? t660 : intrm_sf_mf_420 ? t659 :
+  t597 = intrm_sf_mf_422 ? t660 : intrm_sf_mf_421 ? t659 :
     Steam_Generator_two_phase_fluid_DrhoDp_out_vap;
   Steam_Generator_two_phase_fluid_DrhoDp_out_vap = t647 <= t597 ? t647 : t597;
   if (t597 / (t647 == 0.0 ? 1.0E-16 : t647) >= 1.000001) {
@@ -1416,8 +1424,8 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   if (intrm_sf_mf_58) {
     if (intrm_sf_mf_51) {
       if (M[0ULL] != 0) {
-        t670 = X[58ULL] - t520 * zc_int43 * 1000.0;
-        t663 = pmf_log((t544 * zc_int43 * 1000.0 + X[58ULL]) / (t670 == 0.0 ?
+        t670 = X[58ULL] - t520 * zc_int44 * 1000.0;
+        t663 = pmf_log((t544 * zc_int44 * 1000.0 + X[58ULL]) / (t670 == 0.0 ?
           1.0E-16 : t670));
         t581 = t663 / (t517 == 0.0 ? 1.0E-16 : t517);
       } else {
@@ -1454,194 +1462,196 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   if (intrm_sf_mf_58) {
     if (intrm_sf_mf_51) {
       if (M[0ULL] != 0) {
-        t520 = (t518 - 1.0) * zc_int43 * 1000.0 + X[58ULL];
+        t520 = (zc_int26 - 1.0) * zc_int44 * 1000.0 + X[58ULL];
       } else {
-        t520 = (t518 * t551 + X[58ULL]) - zc_int43 * 1000.0;
+        t520 = (zc_int26 * t551 + X[58ULL]) - zc_int44 * 1000.0;
       }
     } else if (intrm_sf_mf_50) {
       t520 = X[58ULL];
     } else {
-      t520 = (t540 * t684 + X[58ULL]) - t557 * 1000.0;
+      t520 = (zc_int25 * t684 + X[58ULL]) - t557 * 1000.0;
     }
   } else if (intrm_sf_mf_57) {
     if (intrm_sf_mf_54) {
       if (M[1ULL] != 0) {
-        t520 = (t540 - 1.0) * t557 * 1000.0 + X[58ULL];
+        t520 = (zc_int25 - 1.0) * t557 * 1000.0 + X[58ULL];
       } else {
-        t520 = (t540 * t684 + X[58ULL]) - t557 * 1000.0;
+        t520 = (zc_int25 * t684 + X[58ULL]) - t557 * 1000.0;
       }
     } else if (intrm_sf_mf_53) {
       t520 = X[58ULL];
     } else {
-      t520 = (t518 * t551 + X[58ULL]) - zc_int43 * 1000.0;
+      t520 = (zc_int26 * t551 + X[58ULL]) - zc_int44 * 1000.0;
     }
   } else if (intrm_sf_mf_51) {
-    t520 = (t518 * t551 + X[58ULL]) - zc_int43 * 1000.0;
+    t520 = (zc_int26 * t551 + X[58ULL]) - zc_int44 * 1000.0;
   } else if (intrm_sf_mf_55) {
     t520 = X[58ULL];
   } else {
-    t520 = (t540 * t684 + X[58ULL]) - t557 * 1000.0;
+    t520 = (zc_int25 * t684 + X[58ULL]) - t557 * 1000.0;
   }
 
   if (intrm_sf_mf_58) {
     if (intrm_sf_mf_51) {
       if (M[0ULL] != 0) {
-        zc_int43 = t550;
+        zc_int44 = t550;
       } else {
-        zc_int43 = zc_int9 * t551 * 0.001 + t546;
+        zc_int44 = t538 * t551 * 0.001 + t546;
       }
     } else if (intrm_sf_mf_50) {
-      zc_int43 = t546;
+      zc_int44 = t546;
     } else {
-      zc_int43 = t556 * t684 * 0.001 + t546;
+      zc_int44 = t556 * t684 * 0.001 + t546;
     }
   } else if (intrm_sf_mf_57) {
     if (intrm_sf_mf_54) {
       if (M[1ULL] != 0) {
-        zc_int43 = t553;
+        zc_int44 = t553;
       } else {
-        zc_int43 = t556 * t684 * 0.001 + t546;
+        zc_int44 = t556 * t684 * 0.001 + t546;
       }
     } else if (intrm_sf_mf_53) {
-      zc_int43 = t546;
+      zc_int44 = t546;
     } else {
-      zc_int43 = zc_int9 * t551 * 0.001 + t546;
+      zc_int44 = t538 * t551 * 0.001 + t546;
     }
   } else if (intrm_sf_mf_51) {
-    zc_int43 = zc_int9 * t551 * 0.001 + t546;
+    zc_int44 = t538 * t551 * 0.001 + t546;
   } else if (intrm_sf_mf_55) {
-    zc_int43 = t546;
+    zc_int44 = t546;
   } else {
-    zc_int43 = t556 * t684 * 0.001 + t546;
+    zc_int44 = t556 * t684 * 0.001 + t546;
   }
 
   if (intrm_sf_mf_58) {
     if (intrm_sf_mf_68) {
       if (intrm_sf_mf_67) {
-        t699 = zc_int12 * (t553 - zc_int43) * 1000.0 + t520;
+        t699 = zc_int37 * (t553 - zc_int44) * 1000.0 + t520;
         t684 = -pmf_log(t520 / (t699 == 0.0 ? 1.0E-16 : t699));
-        zc_int43 = t684 / (t676 == 0.0 ? 1.0E-16 : t676);
+        zc_int44 = t684 / (t676 == 0.0 ? 1.0E-16 : t676);
       } else {
-        zc_int43 = t539;
+        zc_int44 = t539;
       }
     } else {
-      zc_int43 = 0.0;
+      zc_int44 = 0.0;
     }
   } else if (intrm_sf_mf_57) {
     if (intrm_sf_mf_70) {
       if (intrm_sf_mf_69) {
-        t669 = zc_int12 * (t550 - zc_int43) * 1000.0 + t520;
+        t669 = zc_int37 * (t550 - zc_int44) * 1000.0 + t520;
         t670 = -pmf_log(t520 / (t669 == 0.0 ? 1.0E-16 : t669));
-        zc_int43 = t670 / (t676 == 0.0 ? 1.0E-16 : t676);
+        zc_int44 = t670 / (t676 == 0.0 ? 1.0E-16 : t676);
       } else {
-        zc_int43 = t539;
+        zc_int44 = t539;
       }
     } else {
-      zc_int43 = 0.0;
+      zc_int44 = 0.0;
     }
   } else {
-    zc_int43 = t539;
+    zc_int44 = t539;
   }
 
-  zc_int12 = t539 - zc_int43;
-  t539 = t581 + (intrm_sf_mf_58 ? 0.0 : intrm_sf_mf_57 ? zc_int12 : 0.0);
-  zc_int9 = intrm_sf_mf_58 ? zc_int12 : 0.0;
-  if (intrm_sf_mf_440) {
-    if (intrm_sf_mf_433) {
-      if (M[73ULL] != 0) {
+  zc_int37 = t539 - zc_int44;
+  t539 = t581 + (intrm_sf_mf_58 ? 0.0 : intrm_sf_mf_57 ? zc_int37 : 0.0);
+  t538 = intrm_sf_mf_58 ? zc_int37 : 0.0;
+  if (intrm_sf_mf_441) {
+    if (intrm_sf_mf_434) {
+      if (M[72ULL] != 0) {
         t676 = -pmf_log((X[163ULL] - t588 * 1000.0) / (X[163ULL] == 0.0 ?
           1.0E-16 : X[163ULL]));
-        zc_int12 = t676 / (t598 == 0.0 ? 1.0E-16 : t598);
+        zc_int37 = t676 / (t598 == 0.0 ? 1.0E-16 : t598);
       } else {
-        zc_int12 = 1.0;
+        zc_int37 = 1.0;
       }
     } else {
-      zc_int12 = 0.0;
+      zc_int37 = 0.0;
     }
   } else {
-    zc_int12 = intrm_sf_mf_439 ? intrm_sf_mf_436 ? 0.0 : (real_T)
-      !intrm_sf_mf_435 : (real_T)intrm_sf_mf_433;
+    zc_int37 = intrm_sf_mf_440 ? intrm_sf_mf_437 ? 0.0 : (real_T)
+      !intrm_sf_mf_436 : (real_T)intrm_sf_mf_434;
   }
 
-  if (intrm_sf_mf_440) {
-    t540 = intrm_sf_mf_433 ? 0.0 : (real_T)!intrm_sf_mf_417;
-  } else if (intrm_sf_mf_439) {
-    if (intrm_sf_mf_436) {
-      if (M[84ULL] != 0) {
-        t676 = -pmf_log((X[163ULL] - t596 * 1000.0) / (X[163ULL] == 0.0 ?
-          1.0E-16 : X[163ULL]));
-        t540 = t676 / (t608 == 0.0 ? 1.0E-16 : t608);
+  if (intrm_sf_mf_441) {
+    zc_int25 = intrm_sf_mf_434 ? 0.0 : (real_T)!intrm_sf_mf_433;
+  } else if (intrm_sf_mf_440) {
+    if (intrm_sf_mf_437) {
+      if (M[83ULL] != 0) {
+        t676 = -pmf_log((X[163ULL] - intrm_sf_mf_424 * 1000.0) / (X[163ULL] ==
+          0.0 ? 1.0E-16 : X[163ULL]));
+        zc_int25 = t676 / (intrm_sf_mf_427 == 0.0 ? 1.0E-16 : intrm_sf_mf_427);
       } else {
-        t540 = 1.0;
+        zc_int25 = 1.0;
       }
     } else {
-      t540 = 0.0;
+      zc_int25 = 0.0;
     }
   } else {
-    t540 = intrm_sf_mf_433 ? 0.0 : (real_T)!intrm_sf_mf_437;
+    zc_int25 = intrm_sf_mf_434 ? 0.0 : (real_T)!intrm_sf_mf_438;
   }
 
-  t518 = (1.0 - zc_int12) - t540;
-  if (intrm_sf_mf_440) {
-    if (intrm_sf_mf_433) {
-      if (M[73ULL] != 0) {
+  zc_int26 = (1.0 - zc_int37) - zc_int25;
+  if (intrm_sf_mf_441) {
+    if (intrm_sf_mf_434) {
+      if (M[72ULL] != 0) {
         t520 = t601;
       } else {
         t520 = Steam_Generator_two_phase_fluid_Pr_liq * t602 * 0.001 + t599;
       }
-    } else if (intrm_sf_mf_417) {
+    } else if (intrm_sf_mf_433) {
       t520 = t599;
     } else {
       t520 = Steam_Generator_two_phase_fluid_cp_vap_ * t609 * 0.001 + t599;
     }
-  } else if (intrm_sf_mf_439) {
-    if (intrm_sf_mf_436) {
-      if (M[84ULL] != 0) {
+  } else if (intrm_sf_mf_440) {
+    if (intrm_sf_mf_437) {
+      if (M[83ULL] != 0) {
         t520 = t604;
       } else {
         t520 = Steam_Generator_two_phase_fluid_cp_vap_ * t609 * 0.001 + t599;
       }
-    } else if (intrm_sf_mf_435) {
+    } else if (intrm_sf_mf_436) {
       t520 = t599;
     } else {
       t520 = Steam_Generator_two_phase_fluid_Pr_liq * t602 * 0.001 + t599;
     }
-  } else if (intrm_sf_mf_433) {
+  } else if (intrm_sf_mf_434) {
     t520 = Steam_Generator_two_phase_fluid_Pr_liq * t602 * 0.001 + t599;
-  } else if (intrm_sf_mf_437) {
+  } else if (intrm_sf_mf_438) {
     t520 = t599;
   } else {
     t520 = Steam_Generator_two_phase_fluid_cp_vap_ * t609 * 0.001 + t599;
   }
 
-  if (intrm_sf_mf_440) {
-    if (intrm_sf_mf_450) {
-      if (intrm_sf_mf_449) {
-        t520 = (t604 - t520) / (t595 == 0.0 ? 1.0E-16 : t595) / (intrm_sf_mf_424
-          == 0.0 ? 1.0E-16 : intrm_sf_mf_424) * 1000.0;
+  if (intrm_sf_mf_441) {
+    if (intrm_sf_mf_451) {
+      if (intrm_sf_mf_450) {
+        t520 = (t604 - t520) / (t595 == 0.0 ? 1.0E-16 : t595) / (intrm_sf_mf_425
+          == 0.0 ? 1.0E-16 : intrm_sf_mf_425) * 1000.0;
       } else {
-        t520 = t518;
+        t520 = zc_int26;
       }
     } else {
       t520 = 0.0;
     }
-  } else if (intrm_sf_mf_439) {
-    if (intrm_sf_mf_452) {
-      if (intrm_sf_mf_451) {
-        t520 = (t601 - t520) / (t595 == 0.0 ? 1.0E-16 : t595) / (intrm_sf_mf_424
-          == 0.0 ? 1.0E-16 : intrm_sf_mf_424) * 1000.0;
+  } else if (intrm_sf_mf_440) {
+    if (intrm_sf_mf_453) {
+      if (intrm_sf_mf_452) {
+        t520 = (t601 - t520) / (t595 == 0.0 ? 1.0E-16 : t595) / (intrm_sf_mf_425
+          == 0.0 ? 1.0E-16 : intrm_sf_mf_425) * 1000.0;
       } else {
-        t520 = t518;
+        t520 = zc_int26;
       }
     } else {
       t520 = 0.0;
     }
   } else {
-    t520 = t518;
+    t520 = zc_int26;
   }
 
-  t544 = t518 - t520;
-  zc_int9 = (t535 * t539 + t510 * (t517 + zc_int9)) + t522 * zc_int43;
+  t544 = zc_int26 - t520;
+  zc_int26 = t517 + t538;
+  t517 = zc_int37 + (intrm_sf_mf_441 ? 0.0 : intrm_sf_mf_440 ? t544 : 0.0);
+  zc_int37 = (t535 * t539 + t509 * zc_int26) + t522 * zc_int44;
   t536 = t536 * t561 * 100.0 / 387.46788154112568;
   t513 = t513 * t561 * 100000.0 / 5.0 * 0.001 / 83.887262122266435;
   t706 = t706 * t561 * 0.001 / 387.46788154112568;
@@ -1656,7 +1666,7 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   out.mX[7] = t513;
   out.mX[8] = t565 / 2.0 * 0.092765046668672663;
   out.mX[9] = t706;
-  out.mX[10] = zc_int9 * 3534.2917352885174;
+  out.mX[10] = zc_int37 * 3534.2917352885174;
   out.mX[11] = X[14ULL] / 5.0 / 4.04272269036489;
   out.mX[12] = X[14ULL] / 760.43781017404388;
   out.mX[13] = 0.00047789058976114489;
@@ -1692,21 +1702,21 @@ int32_T PW_SMRv7_d632b26e_1_ds_m(const NeDynamicSystem *LC, const
   out.mX[40] = t612 / 2.0 * 0.36562301792487523;
   out.mX[41] = t620 * t611 / 5.0 * 0.001 / 1402.7179873660207;
   out.mX[42] = (t617 + t619) / 2.0 * 0.36562301792487523;
-  out.mX[43] = t590 * t611 * 100.0 / 1491.3876676289765;
+  out.mX[43] = Steam_Generator_thermal_liquid_DuDp_out * t611 * 100.0 /
+    1491.3876676289765;
   out.mX[44] = t587 * t611 * 100000.0 / 5.0 * 0.001 / 1402.7179873660207;
   out.mX[45] = t428_idx_0 / 2.0 * 0.36562301792487523;
   out.mX[46] = t534;
-  out.mX[47] = ((t591 * (zc_int12 + (intrm_sf_mf_440 ? 0.0 : intrm_sf_mf_439 ?
-    t544 : 0.0)) + (t605 + Steam_Generator_two_phase_fluid_DrhoDp_out_vap) / 2.0
-                 * (t540 + (intrm_sf_mf_440 ? t544 : 0.0))) + t597 * t520) *
-    25770.87723647878;
+  out.mX[47] = ((t591 * t517 + (t605 +
+    Steam_Generator_two_phase_fluid_DrhoDp_out_vap) / 2.0 * (zc_int25 +
+    (intrm_sf_mf_441 ? t544 : 0.0))) + t597 * t520) * 25770.87723647878;
   out.mX[48] = X[41ULL] / 5.0 / 28.289212781617429;
   out.mX[49] = X[41ULL] / 985.665155301639;
-  out.mX[50] = 0.007844718547625475;
+  out.mX[50] = 0.02466529664411694;
   out.mX[51] = 0.00033433928409673172;
   out.mX[52] = 1.0;
-  out.mX[53] = 0.392739485674549;
-  out.mX[54] = 0.00827287079664593;
+  out.mX[53] = 0.38605472020353337;
+  out.mX[54] = 0.026140966910708188;
   out.mX[55] = 1.0;
   (void)LC;
   (void)t709;

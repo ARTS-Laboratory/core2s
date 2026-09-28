@@ -13,7 +13,7 @@
 int32_T PW_SMRv7_d632b26e_1_ds_obs_il(const NeDynamicSystem *LC, const
   NeDynamicSystemInput *t1, NeDsMethodOutput *t2)
 {
-  static boolean_T _cg_const_1[739] = { true, true, true, true, true, true, true,
+  static boolean_T _cg_const_1[749] = { true, true, true, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, true, true, true,
@@ -55,11 +55,12 @@ int32_T PW_SMRv7_d632b26e_1_ds_obs_il(const NeDynamicSystem *LC, const
     true, true, true, true, true, true, true, true, true, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, false, true,
     true, true, true, true, true, true, true, true, true, false, false, false,
-    false, false, true, true, true, false, false, true, false, false, false,
-    false, false, true, false, false, false, true, true, true, true, true, true,
-    true, true, true, true, true, true, true, true, false, true, true, true,
+    false, false, false, true, false, true, true, false, false, false, false,
+    false, true, false, false, false, false, false, false, true, false, false,
+    false, false, false, false, false, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, false, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, true, true, true,
-    true, true, true, true, true, true, true, true, true, true, true, true, true,
+    true, true, true, true, true, true, true, true, true, true, true, true,
     false, true, true, true, true, true, true, true, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, true, true, true,
     true, true, true, true, true, true, true, true, true, true, true, true, true,
@@ -76,15 +77,15 @@ int32_T PW_SMRv7_d632b26e_1_ds_obs_il(const NeDynamicSystem *LC, const
 
   PmBoolVector out;
   int32_T b;
-  boolean_T t0[739];
+  boolean_T t0[749];
   (void)t1;
   (void)LC;
   out = t2->mOBS_IL;
-  for (b = 0; b < 739; b++) {
+  for (b = 0; b < 749; b++) {
     t0[b] = _cg_const_1[b];
   }
 
-  for (b = 0; b < 739; b++) {
+  for (b = 0; b < 749; b++) {
     out.mX[b] = t0[b];
   }
 
