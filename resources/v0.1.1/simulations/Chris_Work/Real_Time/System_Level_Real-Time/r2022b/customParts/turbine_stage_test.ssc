@@ -1,0 +1,21 @@
+component turbine_stage_test
+
+inputs
+    pressure = {1,'MPa'};
+end
+
+
+
+
+outputs
+    pressure_out = {0,'MPa'};
+end
+
+
+
+equations
+    pressure_out == pressure;
+end
+
+
+end
