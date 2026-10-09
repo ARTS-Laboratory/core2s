@@ -1,4 +1,5 @@
-component custom_turbine_2p_layer4
+component custom_turbine_2p_layer5
+
 % =============================================================
 % 2P TURBINE - LAYER 4
 % COUPLED VARIABLE-AREA NOZZLE / OFF-DESIGN TURBINE MODEL
@@ -203,6 +204,20 @@ outputs
 
     nozzle_choked_out = {0, '1'};
 
+    % =========================================================
+    % STAGE DIAGNOSTICS
+    % =========================================================
+
+    HP_pressure_out = {0,'MPa'};
+
+    IP_pressure_out = {0,'MPa'};
+
+    HP_power_out = {0,'kW'};
+
+    IP_power_out = {0,'kW'};
+
+    LP_power_out = {0,'kW'};
+
 end
 
 
@@ -211,7 +226,6 @@ end
 % =============================================================
 
 parameters
-
     % =========================================================
     % NOMINAL TURBINE CONDITIONS
     % =========================================================
@@ -248,7 +262,15 @@ parameters
 
     nozzle_Cd = {0.85, '1'};
 
+    % =========================================================
+    % STAGE PRESSURE DISTRIBUTION
+    %
+    % Phase 1:
+    % Equal pressure split.
+    %
+    % =========================================================
 
+    HP_pressure_fraction = {0.50,'1'};
     % =========================================================
     % EQUIVALENT VAPOR PROPERTIES
     % =========================================================
@@ -295,6 +317,23 @@ parameters
     efficiency_flow_curve = {0.20, '1'};
 
     efficiency_pressure_curve = {0.35, '1'};
+
+    % =========================================================
+    % STAGE PRESSURE FRACTIONS
+    %
+    % Fraction of the total pressure drop assigned to each
+    % stage.
+    %
+    % These will eventually become dynamic.
+    % For Phase 1 they remain fixed.
+    % =========================================================
+
+    HP_pressure_fraction = {0.35,'1'};
+
+    IP_pressure_fraction = {0.70,'1'};
+
+
+    
 
 end
 
@@ -363,8 +402,6 @@ components (ExternalAccess = none)
     convection_B = foundation.two_phase_fluid.port_convection( ...
         flow_area = {0.01, 'm^2'}, ...
         length_scale = sqrt(4*{0.01, 'm^2'}/pi));
-
-     
 
 end
 
@@ -509,6 +546,16 @@ intermediates (Access = private, ExternalAccess = none)
             1, ...
             false);
 
+    % =========================================================
+% HP STAGE PRESSURE
+%
+% Phase 1 assumes equal pressure split.
+%
+% =========================================================
+
+p_HP =
+    p_A -
+    HP_pressure_fraction*(p_A-p_B);
 
     % =========================================================
     % CRITICAL PRESSURE RATIO
@@ -787,48 +834,17 @@ intermediates (Access = private, ExternalAccess = none)
 
 
     % =========================================================
-    % IDEAL ENTHALPY DROP
+    % STAGE PRESSURES
     % =========================================================
 
-    ideal_enthalpy_drop = ...
-        h_A - h_B_isentropic;
+    p_HP =
+        p_A -
+        HP_pressure_fraction*(p_A-p_B);
 
+    p_IP =
+        p_A -
+        IP_pressure_fraction*(p_A-p_B);
 
-    % =========================================================
-    % ACTUAL ENTHALPY DROP
-    % =========================================================
-
-    actual_enthalpy_drop = ...
-        actual_efficiency * ...
-        ideal_enthalpy_drop;
-
-
-    % =========================================================
-    % TRANSITION-SAFE ENTHALPY DROP
-    % =========================================================
-
-    enthalpy_drop_active = ...
-        if gt(Dp, dp_min), ...
-            actual_enthalpy_drop ...
-        else ...
-            {0, 'kJ/kg'} ...
-        end;
-
-
-    % =========================================================
-    % ACTUAL OUTLET ENTHALPY
-    % =========================================================
-
-    h_B = ...
-        h_A - enthalpy_drop_active;
-
-
-    % =========================================================
-    % TURBINE POWER
-    % =========================================================
-
-    turbine_power = ...
-        abs(mdot_A) * enthalpy_drop_active;
 
 end
 
