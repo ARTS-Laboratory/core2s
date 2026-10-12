@@ -50,7 +50,7 @@ if abs(cfg.PressureWeight + cfg.TemperatureWeight - 1) > 1e-12
     error('PressureWeight and TemperatureWeight must sum to 1.');
 end
 
-modelName = char(SMR_PrimaryDT_v1);
+modelName = char(SMR_PrimaryDT_v2);
 if ~bdIsLoaded(modelName)
     load_system(modelName);
 end
