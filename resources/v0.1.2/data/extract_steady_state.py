@@ -14,7 +14,7 @@ Folder layout expected:
     data/                               <- this script lives here
       valve_position_testing/
         raw/<test_folder>/flow.csv, power.csv, pressure.csv, temperature.csv
-        processed/                      <- outputs go to processed/<test_folder>/
+        processed/                      <- outputs go to processed/<test_folder>_processed/
 
 If ANY check fails (missing CSV, timestamp gap, no steady state, window shorter
 than 10 min, files not on a shared clock), the reason is printed and NOTHING
@@ -361,7 +361,7 @@ def main():
         folder = find_test_folder(args.test)
         print(f"Test: {folder.name}")
 
-        out_dir = PROCESSED_DIR / folder.name
+        out_dir = PROCESSED_DIR / f"{folder.name}_processed"
         if out_dir.exists() and not args.overwrite:
             raise CheckFailed(
                 f"Output folder already exists: {out_dir}\n"

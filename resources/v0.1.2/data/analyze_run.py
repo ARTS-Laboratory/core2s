@@ -2,52 +2,51 @@
 """
 SMR thermal loop run analyzer.
 
-This script lives in the "data" folder and looks inside the run-parent
-folder (currently "002") for LabVIEW run folders.
+Makes four PDF plots (temperature, pressure, flow, power) for ONE test folder.
+Run it from Anaconda Prompt, in the "data" folder, like extract_steady_state.py:
+
+    python analyze_run.py 0_deg_test_1               a raw run in raw/
+    python analyze_run.py 0_deg_test_1_processed     a 10-minute window in processed/
+
+You can also give a nested name ("test_1\\0_deg_test_1") or a full path.
 
 Expected structure:
 
     .../resources/v0.1.2/data/
         analyze_run.py
-        002/
-            run_YYYYMMDD_HHMMSS_tick/
-                temperature.csv
-                pressure.csv
-                flow.csv
-                voltage.csv          (optional - newer runs only)
+        extract_steady_state.py
+        valve_position_testing/
+            raw/<test_folder>/          flow.csv power.csv pressure.csv temperature.csv
+            processed/<test>_processed/ flow_steady_state.csv ... (from extract_steady_state.py)
 
-Default behavior:
-    - Analyzes the latest run folder
-    - Creates up to 5 plots:
-        1. temperature_over_time
-        2. pressure_over_time
-        3. flow_over_time              (heat exchanger flow)
-        4. main_loop_flow_over_time    (if the column exists)
-        5. voltage_over_time           (if voltage.csv exists)
-       plus power_over_time if voltage.csv carries a watts column.
-    - Excludes all average/summary columns
-    - For flow, plots only the GPM flow columns, not raw voltage
-    - Main loop flow is plotted separately from heat exchanger flow
-      because the two differ by more than an order of magnitude
-      (roughly 60 GPM vs a few GPM), so sharing one axis would
-      flatten the heat exchanger trace into the baseline.
-    - voltage.csv is optional: runs recorded before it was added
-      still analyze normally, that plot is just skipped.
+Output: a "plots" folder INSIDE the folder you analyzed, holding
+    <folder>_temperature_over_time.pdf
+    <folder>_pressure_over_time.pdf
+    <folder>_flow_over_time.pdf          (main loop flow on the left axis,
+                                          heat exchanger flow on the right axis)
+    <folder>_power_over_time.pdf
 
-Notes on speed:
-    - PNG only by default (PDF is vector and is very slow for large runs)
-    - Non-interactive Agg backend so no figure windows are created
-    - Points per line are capped, and the "tight bbox" second render pass
-      has been removed
+Every graph is titled with the test, e.g. "0° test 1" or "0° test 1 processed".
+
+Time axis:
+    - Time always restarts at 0 at the first sample of the file being plotted.
+    - For processed windows, a second axis under the plot shows the time in the
+      ORIGINAL raw test, so you can see exactly where the window came from.
+
+Inf values (and blank values) are ignored: they are left out of the plot as gaps.
+If anything is wrong (folder not found, missing CSV, no usable columns) the reason
+is printed and no plots are created.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 import matplotlib
@@ -57,29 +56,15 @@ import matplotlib
 # User-adjustable settings
 # -------------------------------------------------------------------------
 
-# Which folder inside "data" holds the run folders.
-# Set to None to always auto-detect the highest-numbered folder.
-RUN_FOLDER_PARENT_NAME = "002"
-
-# If the folder above is missing, fall back to the highest-numbered
-# folder that exists (001, 002, 003, ...). Makes future migrations painless.
-AUTO_DETECT_RUN_PARENT = True
-
-# Maximum number of points plotted per line.
-# This keeps graphs fast even for very large CSV files.
+# Maximum number of points plotted per line (keeps PDFs small and fast).
 MAX_PLOT_POINTS = 3000
 
-# Save both PNG and PDF?
-# PDF is vector: every plotted point becomes path data in the file.
-# Leave this False unless you specifically need a vector figure.
-SAVE_PDF = False
-SAVE_PNG = True
-
-# Output resolution for PNG. 300 is print quality but ~4x the pixels of 150.
+# Output formats.
+SAVE_PDF = True
+SAVE_PNG = False
 PNG_DPI = 150
 
-# Use a non-interactive plotting backend (no figure windows, much faster
-# and avoids Spyder/Qt backend stalls). Set False if you want inline plots.
+# Non-interactive backend: no figure windows, faster, no Spyder/Qt stalls.
 USE_NON_INTERACTIVE_BACKEND = True
 
 
@@ -89,211 +74,119 @@ if USE_NON_INTERACTIVE_BACKEND:
 import matplotlib.pyplot as plt  # noqa: E402  (must come after matplotlib.use)
 
 
-# Line-drawing speedups for dense data.
 matplotlib.rcParams["path.simplify"] = True
 matplotlib.rcParams["path.simplify_threshold"] = 1.0
 matplotlib.rcParams["agg.path.chunksize"] = 10000
+matplotlib.rcParams["pdf.fonttype"] = 42      # keep text editable in the PDFs
 
 
 # -------------------------------------------------------------------------
-# Folder discovery
+# Folders
 # -------------------------------------------------------------------------
 
-def numbered_subfolders(folder: Path) -> list[Path]:
-    """Return subfolders whose names are all digits (001, 002, ...), sorted."""
-    if not folder.is_dir():
-        return []
+try:
+    DATA_DIR = Path(__file__).resolve().parent
+except NameError:                              # code pasted into a console
+    DATA_DIR = Path.cwd().resolve()
 
-    return sorted(
-        (p for p in folder.iterdir() if p.is_dir() and p.name.isdigit()),
-        key=lambda p: p.name,
+TEST_ROOT = DATA_DIR / "valve_position_testing"
+RAW_DIR = TEST_ROOT / "raw"
+PROCESSED_DIR = TEST_ROOT / "processed"
+
+
+class AnalysisError(Exception):
+    """Raised when something is wrong. The message is what gets printed."""
+
+
+def resolve_folder(argument: str) -> Path:
+    """
+    Find the folder to analyze.
+
+    Looks in raw/ and processed/ (processed first when the name ends in
+    _processed), then treats the argument as a path.
+    """
+    given = Path(argument)
+
+    if given.is_absolute() and given.is_dir():
+        return given.resolve()
+
+    if given.name.endswith("_processed"):
+        bases = [PROCESSED_DIR, RAW_DIR]
+    else:
+        bases = [RAW_DIR, PROCESSED_DIR]
+
+    for base in bases:
+        candidate = base / argument
+        if candidate.is_dir():
+            return candidate.resolve()
+
+    if given.is_dir():
+        return given.resolve()
+
+    raise AnalysisError(
+        f"Test folder not found: {argument}\n"
+        f"  Looked in: {RAW_DIR}\n"
+        f"             {PROCESSED_DIR}\n"
+        f"  and for it as a path from: {Path.cwd()}"
     )
 
 
-def looks_like_data_dir(folder: Path) -> bool:
-    """True if this folder contains the run-parent folder."""
-    if not folder.is_dir():
-        return False
-
-    if RUN_FOLDER_PARENT_NAME and (folder / RUN_FOLDER_PARENT_NAME).is_dir():
-        return True
-
-    return AUTO_DETECT_RUN_PARENT and bool(numbered_subfolders(folder))
-
-
-def find_data_dir() -> Path:
-    """
-    Find the data folder that contains the run-parent folder.
-
-    Priority:
-    1. Folder containing this script
-    2. Current Spyder/terminal working directory
-    """
-    candidates: list[Path] = []
-
-    try:
-        candidates.append(Path(__file__).resolve().parent)
-    except NameError:
-        # __file__ is undefined when code is pasted straight into a console.
-        pass
-
-    candidates.append(Path.cwd().resolve())
-
-    for candidate in candidates:
-        # Case: candidate is the data folder.
-        if looks_like_data_dir(candidate):
-            return candidate
-
-        # Case: candidate is the version folder and contains data/002.
-        if looks_like_data_dir(candidate / "data"):
-            return candidate / "data"
-
-        # Case: candidate is already the 002 folder.
-        if candidate.name.isdigit() and looks_like_data_dir(candidate.parent):
-            return candidate.parent
-
-    raise FileNotFoundError(
-        f"Could not find the data folder containing '{RUN_FOLDER_PARENT_NAME}'. "
-        "Make sure analyze_run.py is saved in the data folder "
-        "(.../resources/v0.1.2/data)."
+def is_processed_folder(folder: Path) -> bool:
+    """True for a 10-minute-window folder made by extract_steady_state.py."""
+    return (
+        folder.name.endswith("_processed")
+        or folder.parent.name.lower() == "processed"
     )
 
 
-def find_run_parent(data_dir: Path) -> Path:
-    """Return the folder that holds the run_* folders (normally data/002)."""
-    if RUN_FOLDER_PARENT_NAME:
-        explicit = data_dir / RUN_FOLDER_PARENT_NAME
-        if explicit.is_dir():
-            return explicit
+def make_title(folder: Path) -> str:
+    """'0_deg_test_1' -> '0° test 1'; '0_deg_test_1_processed' -> '0° test 1 processed'."""
+    name = folder.name
+    base = name[: -len("_processed")] if name.endswith("_processed") else name
 
-    if AUTO_DETECT_RUN_PARENT:
-        numbered = numbered_subfolders(data_dir)
-        if numbered:
-            return numbered[-1]
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)_deg_test_(\d+)", base, flags=re.IGNORECASE)
+    if match:
+        title = f"{match.group(1)}° test {match.group(2)}"
+    else:
+        title = base.replace("_", " ")
 
-    raise FileNotFoundError(
-        f"No run-parent folder found inside {data_dir}. "
-        f"Expected a folder named '{RUN_FOLDER_PARENT_NAME}'."
-    )
+    if is_processed_folder(folder):
+        title += " processed"
 
-
-DATA_DIR = find_data_dir()
-RUN_PARENT = find_run_parent(DATA_DIR)
-
-
-FILE_CANDIDATES = {
-    "temperature": [
-        "temperature.csv",
-        "Temperature_Log.csv",
-        "Temperature.csv",
-        "temp.csv",
-    ],
-    "pressure": [
-        "pressure.csv",
-        "Pressure_Log.csv",
-        "Pressure.csv",
-    ],
-    "flow": [
-        "flow.csv",
-        "Flow_Log.csv",
-        "Flow.csv",
-    ],
-    "voltage": [
-        "voltage.csv",
-        "Voltage_Log.csv",
-        "Voltage.csv",
-        "power.csv",
-    ],
-}
-
-# Kinds that older runs will not have. Missing these is not an error.
-OPTIONAL_FILE_KINDS = {"voltage"}
-
-
-def find_run_folders() -> list[Path]:
-    """Return available run folders inside the run parent."""
-    if not RUN_PARENT.exists():
-        raise FileNotFoundError(f"Run parent folder does not exist: {RUN_PARENT}")
-
-    run_folders = [
-        p for p in RUN_PARENT.iterdir()
-        if p.is_dir() and p.name.startswith("run_")
-    ]
-
-    if not run_folders:
-        run_folders = [
-            p for p in RUN_PARENT.iterdir()
-            if p.is_dir() and p.name != "plots"
-        ]
-
-    return sorted(run_folders, key=lambda p: p.name)
-
-
-def get_latest_run_folder() -> Path:
-    """Return the latest run folder by sorted folder name."""
-    run_folders = find_run_folders()
-
-    if not run_folders:
-        raise FileNotFoundError(f"No run folders found in {RUN_PARENT}")
-
-    return run_folders[-1]
-
-
-def resolve_run_folder(run_argument: str | None) -> Path:
-    """Resolve a run folder from a command-line argument."""
-    if run_argument is None or run_argument.lower() == "latest":
-        return get_latest_run_folder()
-
-    candidate = Path(run_argument)
-
-    if candidate.exists() and candidate.is_dir():
-        return candidate
-
-    candidate = RUN_PARENT / run_argument
-
-    if candidate.exists() and candidate.is_dir():
-        return candidate
-
-    raise FileNotFoundError(f"Could not find run folder: {run_argument}")
-
-
-def find_csv_file(run_folder: Path, kind: str) -> Path:
-    """Find the CSV file for temperature, pressure, or flow."""
-    for filename in FILE_CANDIDATES[kind]:
-        candidate = run_folder / filename
-        if candidate.exists():
-            return candidate
-
-    matches = [
-        p for p in run_folder.glob("*.csv")
-        if kind.lower() in p.stem.lower()
-    ]
-
-    if matches:
-        return sorted(matches, key=lambda p: p.name)[0]
-
-    raise FileNotFoundError(
-        f"Could not find {kind} CSV in {run_folder}. "
-        f"Expected one of: {FILE_CANDIDATES[kind]}"
-    )
-
-
-def find_optional_csv_file(run_folder: Path, kind: str) -> Path | None:
-    """
-    Same as find_csv_file, but returns None instead of raising.
-
-    Used for files that only exist in newer runs, so that older run
-    folders still analyze without error.
-    """
-    try:
-        return find_csv_file(run_folder, kind)
-    except FileNotFoundError:
-        return None
+    return title
 
 
 # -------------------------------------------------------------------------
-# Data handling
+# Finding and reading the CSVs
 # -------------------------------------------------------------------------
+
+KINDS = ["temperature", "pressure", "flow", "power"]
+
+
+def find_csv_files(folder: Path) -> dict[str, Path]:
+    """Find the four CSVs (raw names, or the *_steady_state names)."""
+    available = {p.name.lower(): p for p in folder.glob("*.csv")}
+
+    found: dict[str, Path] = {}
+    missing: list[str] = []
+
+    for kind in KINDS:
+        for filename in (f"{kind}.csv", f"{kind}_steady_state.csv"):
+            if filename in available:
+                found[kind] = available[filename]
+                break
+        else:
+            missing.append(f"{kind}.csv")
+
+    if missing:
+        raise AnalysisError(
+            f"Missing CSV file(s) in {folder.name}: {', '.join(missing)}\n"
+            f"  Files found: {sorted(available) or 'none'}\n"
+            f"  (Is this a test folder? Give the name of a folder that holds the CSVs.)"
+        )
+
+    return found
+
 
 def get_time_column(df: pd.DataFrame) -> str:
     """Find the time column. Defaults to the first column."""
@@ -304,22 +197,34 @@ def get_time_column(df: pd.DataFrame) -> str:
     return df.columns[0]
 
 
-def read_clean_csv(path: Path) -> pd.DataFrame:
-    """Read a CSV and clean blank/non-numeric rows."""
-    df = pd.read_csv(path)
+def read_clean_csv(path: Path) -> tuple[pd.DataFrame, int]:
+    """
+    Read a CSV, make everything numeric, and turn Inf into blank (NaN).
 
+    Returns the dataframe and how many Inf values were ignored.
+    """
+    df = pd.read_csv(path)
     df.columns = [str(col).strip() for col in df.columns]
 
     df = df.dropna(how="all")
-
-    # Convert everything at once instead of column-by-column assignment.
     df = df.apply(pd.to_numeric, errors="coerce")
+
+    n_inf = int(np.isinf(df.to_numpy(dtype=float)).sum())
+    df = df.replace([np.inf, -np.inf], np.nan)
 
     time_col = get_time_column(df)
     df = df.dropna(subset=[time_col])
+    df = df.sort_values(time_col).reset_index(drop=True)
 
-    return df
+    if df.empty:
+        raise AnalysisError(f"{path.name} has no usable rows.")
 
+    return df, n_inf
+
+
+# -------------------------------------------------------------------------
+# Choosing columns
+# -------------------------------------------------------------------------
 
 def is_average_or_summary_column(column_name: str) -> bool:
     """Return True if the column is an average/summary column."""
@@ -329,12 +234,6 @@ def is_average_or_summary_column(column_name: str) -> bool:
         "avg",
         "average",
         "overall",
-        # Narrowed from a bare "main loop" so that a real measured
-        # channel named "Main Loop Flow (GPM)" is not silently dropped.
-        # The averaged columns are still caught by "avg" above.
-        "main loop avg",
-        "heat exchanger avg",
-        "hx avg",
         "hxpressure",
         "hx pressure",
     ]
@@ -343,44 +242,71 @@ def is_average_or_summary_column(column_name: str) -> bool:
 
 
 def is_main_loop_column(column_name: str) -> bool:
-    """Return True if the column belongs to the main loop rather than the HX."""
     return "main loop" in column_name.lower()
 
 
-def is_power_column(column_name: str) -> bool:
-    """Return True if the column is a power column in watts or kilowatts."""
-    lower = column_name.lower()
-
-    keywords = [
-        "(w)",
-        "(kw)",
-        "power",
-        "watt",
-    ]
-
-    return any(keyword in lower for keyword in keywords)
-
-
 def is_raw_voltage_column(column_name: str) -> bool:
-    """Return True if the column is a raw voltage column."""
+    """Raw voltage / signal-amplitude columns (not wanted in the flow plot)."""
     lower = column_name.lower()
+    return any(k in lower for k in ["raw", "voltage", "(v)", " volts"])
 
-    keywords = [
-        "raw",
-        "voltage",
-        "(v)",
-        " volts",
+
+def is_power_column(column_name: str) -> bool:
+    lower = column_name.lower()
+    return any(k in lower for k in ["(w)", "(kw)", "power", "watt"])
+
+
+def value_columns(df: pd.DataFrame) -> list[str]:
+    time_col = get_time_column(df)
+    return [c for c in df.columns if c != time_col]
+
+
+def get_temperature_columns(df: pd.DataFrame) -> list[str]:
+    return [c for c in value_columns(df) if not is_average_or_summary_column(c)]
+
+
+def get_pressure_columns(df: pd.DataFrame) -> list[str]:
+    return [c for c in value_columns(df) if not is_average_or_summary_column(c)]
+
+
+def _is_flow_name(column_name: str) -> bool:
+    lower = column_name.lower()
+    return "gpm" in lower or "flow" in lower
+
+
+def get_hx_flow_columns(df: pd.DataFrame) -> list[str]:
+    return [
+        c for c in value_columns(df)
+        if _is_flow_name(c)
+        and not is_raw_voltage_column(c)
+        and not is_average_or_summary_column(c)
+        and not is_main_loop_column(c)
     ]
 
-    return any(keyword in lower for keyword in keywords)
+
+def get_main_loop_flow_columns(df: pd.DataFrame) -> list[str]:
+    return [
+        c for c in value_columns(df)
+        if _is_flow_name(c)
+        and not is_raw_voltage_column(c)
+        and not is_average_or_summary_column(c)
+        and is_main_loop_column(c)
+    ]
 
 
-def downsample_dataframe(df: pd.DataFrame, max_points: int = MAX_PLOT_POINTS) -> pd.DataFrame:
-    """
-    Downsample a dataframe for plotting speed.
+def get_power_columns(df: pd.DataFrame) -> list[str]:
+    return [
+        c for c in value_columns(df)
+        if is_power_column(c) and not is_average_or_summary_column(c)
+    ]
 
-    This does not alter the CSV file. It only reduces how many points are drawn.
-    """
+
+# -------------------------------------------------------------------------
+# Plotting
+# -------------------------------------------------------------------------
+
+def downsample_dataframe(df: pd.DataFrame, max_points: int) -> pd.DataFrame:
+    """Reduce how many points are drawn (the CSV is not changed)."""
     if len(df) <= max_points:
         return df
 
@@ -388,481 +314,220 @@ def downsample_dataframe(df: pd.DataFrame, max_points: int = MAX_PLOT_POINTS) ->
     return df.iloc[::step, :].copy()
 
 
-# -------------------------------------------------------------------------
-# Plotting
-# -------------------------------------------------------------------------
-
-def plot_dataframe(
+def plot_groups(
     df: pd.DataFrame,
     title: str,
-    y_label: str,
+    groups: list[tuple[list[str], str]],
     output_stem: Path,
-    columns_to_plot: list[str],
-    time_units: str = "minutes",
-    max_points: int = MAX_PLOT_POINTS,
+    processed: bool,
+    time_units: str,
+    max_points: int,
 ) -> None:
-    """Plot selected columns against time and save the graph."""
-    if not columns_to_plot:
-        raise ValueError(f"No columns selected for plot: {title}")
+    """
+    Plot one figure.
 
+    groups = [(columns, y_label), ...]. One group = one y axis. Two groups =
+    the first on the left axis and the second on the right axis.
+    """
     start = time.time()
 
+    time_col = get_time_column(df)
+    first_time = float(df[time_col].iloc[0])           # original timestamp of sample 1
     df_plot = downsample_dataframe(df, max_points)
 
-    print(
-        f"  Rendering '{title}': "
-        f"{len(columns_to_plot)} lines x {len(df_plot)} points",
-        flush=True,
-    )
+    divisor = 60.0 if time_units == "minutes" else 1.0
+    x = (df_plot[time_col].to_numpy(dtype=float) - first_time) / divisor
 
-    time_col = get_time_column(df_plot)
-
-    if time_units == "minutes":
-        time_axis = df_plot[time_col] / 60.0
-        x_label = "Time (minutes)"
-    elif time_units == "seconds":
-        time_axis = df_plot[time_col]
-        x_label = "Time (seconds)"
-    else:
-        raise ValueError(f"Unsupported time_units: {time_units}")
+    n_lines = sum(len(cols) for cols, _ in groups)
+    print(f"  Rendering '{output_stem.name}': {n_lines} lines x {len(df_plot)} points", flush=True)
 
     fig, ax = plt.subplots(figsize=(12, 7))
+    two_axes = len(groups) == 2
+    axes = [ax, ax.twinx()] if two_axes else [ax]
 
-    for col in columns_to_plot:
-        if col not in df_plot.columns:
-            continue
+    handles = []
+    color_index = 0
 
-        ax.plot(
-            time_axis,
-            df_plot[col],
-            label=col,
-            linewidth=1.0,
-        )
+    for axis, (columns, y_label) in zip(axes, groups):
+        group_color = None
 
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    ax.set_title(title)
+        for col in columns:
+            color = f"C{color_index % 10}"
+            color_index += 1
+            group_color = group_color or color
+
+            (line,) = axis.plot(
+                x,
+                df_plot[col].to_numpy(dtype=float),
+                label=col,
+                linewidth=1.0,
+                color=color,
+            )
+            handles.append(line)
+
+        if two_axes:
+            axis.set_ylabel(y_label, color=group_color)
+            axis.tick_params(axis="y", colors=group_color)
+        else:
+            axis.set_ylabel(y_label)
+
+    ax.set_title(title, fontsize=16)
     ax.grid(True, alpha=0.35)
 
     ax.legend(
-        fontsize=7,
+        handles=handles,
+        labels=[h.get_label() for h in handles],
+        fontsize=8,
         loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
+        bbox_to_anchor=(1.13 if two_axes else 1.02, 0.5),
         borderaxespad=0.0,
     )
 
-    # Reserve room for the legend directly instead of using
-    # bbox_inches="tight", which forces a second full render of the figure.
-    fig.subplots_adjust(left=0.08, right=0.78, top=0.93, bottom=0.09)
+    unit = time_units
+    if processed:
+        ax.set_xlabel(f"Time since start of window ({unit})")
 
-    if SAVE_PNG:
-        png_path = output_stem.with_suffix(".png")
-        fig.savefig(png_path, dpi=PNG_DPI, facecolor="white")
-        print(f"  Saved: {png_path}", flush=True)
+        # Second axis under the first: the same moments, labelled with their
+        # time in the ORIGINAL raw test.
+        offset = first_time / divisor
+        original = ax.secondary_xaxis(
+            -0.17,
+            functions=(lambda v: v + offset, lambda v: v - offset),
+        )
+        original.set_xlabel(f"Time in original test ({unit})")
+        bottom = 0.25
+    else:
+        ax.set_xlabel(f"Time ({unit})")
+        bottom = 0.09
+
+    fig.subplots_adjust(
+        left=0.08,
+        right=0.70 if two_axes else 0.78,
+        top=0.93,
+        bottom=bottom,
+    )
 
     if SAVE_PDF:
         pdf_path = output_stem.with_suffix(".pdf")
         fig.savefig(pdf_path, facecolor="white")
         print(f"  Saved: {pdf_path}", flush=True)
 
-    plt.close(fig)
+    if SAVE_PNG:
+        png_path = output_stem.with_suffix(".png")
+        fig.savefig(png_path, dpi=PNG_DPI, facecolor="white")
+        print(f"  Saved: {png_path}", flush=True)
 
+    plt.close(fig)
     print(f"  Done in {time.time() - start:.1f} s", flush=True)
     print(flush=True)
-
-
-def get_temperature_columns(df: pd.DataFrame) -> list[str]:
-    """
-    Select only individual thermocouple columns.
-
-    Excludes average/summary columns.
-    """
-    time_col = get_time_column(df)
-
-    selected = []
-
-    for col in df.columns:
-        if col == time_col:
-            continue
-
-        if is_average_or_summary_column(col):
-            continue
-
-        selected.append(col)
-
-    return selected
-
-
-def get_pressure_columns(df: pd.DataFrame) -> list[str]:
-    """
-    Select only individual pressure transducer columns.
-
-    Excludes average/summary columns.
-    """
-    time_col = get_time_column(df)
-
-    selected = []
-
-    for col in df.columns:
-        if col == time_col:
-            continue
-
-        if is_average_or_summary_column(col):
-            continue
-
-        selected.append(col)
-
-    return selected
-
-
-def get_flow_columns(df: pd.DataFrame) -> list[str]:
-    """
-    Select heat exchanger flow in GPM.
-
-    Excludes raw voltage, signal amplitude, average/summary columns,
-    and main loop flow (which is plotted separately because of scale).
-    """
-    time_col = get_time_column(df)
-
-    selected = []
-
-    for col in df.columns:
-        if col == time_col:
-            continue
-
-        if is_raw_voltage_column(col):
-            continue
-
-        if is_average_or_summary_column(col):
-            continue
-
-        if is_main_loop_column(col):
-            continue
-
-        lower = col.lower()
-
-        # Prefer columns that explicitly look like flow/GPM.
-        if "gpm" in lower or "flow" in lower:
-            selected.append(col)
-
-    # Fallback: if no explicit GPM/flow column was found, use the first non-time,
-    # non-voltage, non-average column.
-    if not selected:
-        for col in df.columns:
-            if col == time_col:
-                continue
-
-            if is_raw_voltage_column(col):
-                continue
-
-            if is_average_or_summary_column(col):
-                continue
-
-            if is_main_loop_column(col):
-                continue
-
-            selected.append(col)
-            break
-
-    return selected
-
-
-def get_main_loop_flow_columns(df: pd.DataFrame) -> list[str]:
-    """
-    Select main loop flow in GPM.
-
-    Returns an empty list for older runs that predate this column.
-    """
-    time_col = get_time_column(df)
-
-    selected = []
-
-    for col in df.columns:
-        if col == time_col:
-            continue
-
-        if is_raw_voltage_column(col):
-            continue
-
-        if is_average_or_summary_column(col):
-            continue
-
-        if not is_main_loop_column(col):
-            continue
-
-        lower = col.lower()
-
-        if "gpm" in lower or "flow" in lower:
-            selected.append(col)
-
-    return selected
-
-
-def get_voltage_columns(df: pd.DataFrame) -> list[str]:
-    """
-    Select voltage columns from voltage.csv.
-
-    Note this deliberately does NOT use is_raw_voltage_column, which exists
-    to strip voltages out of the flow plot. Here the voltages are the point.
-    """
-    time_col = get_time_column(df)
-
-    selected = []
-
-    for col in df.columns:
-        if col == time_col:
-            continue
-
-        if is_power_column(col):
-            continue
-
-        lower = col.lower()
-
-        if "(v)" in lower or "volt" in lower:
-            selected.append(col)
-
-    return selected
-
-
-def get_power_columns(df: pd.DataFrame) -> list[str]:
-    """
-    Select power columns from voltage.csv.
-
-    Plotted on their own axis: watts and volts differ by roughly three
-    orders of magnitude, so sharing an axis would flatten the voltage trace.
-    """
-    time_col = get_time_column(df)
-
-    return [
-        col for col in df.columns
-        if col != time_col and is_power_column(col)
-    ]
-
-
-def print_variation_summary(df: pd.DataFrame, columns: list[str]) -> None:
-    """
-    Print min/max/mean/spread for each column.
-
-    Added for the rod voltage file specifically: the reason that file
-    exists is to quantify how much the supply drifts over a run, and
-    the numbers are easier to compare than eyeballing the plot.
-    """
-    for col in columns:
-        series = df[col].dropna()
-
-        if series.empty:
-            continue
-
-        low = series.min()
-        high = series.max()
-        mean = series.mean()
-        spread = high - low
-        percent = (spread / mean * 100.0) if mean else float("nan")
-
-        print(
-            f"  {col}: min {low:.4f}, max {high:.4f}, mean {mean:.4f}, "
-            f"spread {spread:.4f} ({percent:.1f}% of mean)",
-            flush=True,
-        )
 
 
 # -------------------------------------------------------------------------
 # Main analysis
 # -------------------------------------------------------------------------
 
-def analyze_run(
-    run_folder: Path,
-    time_units: str = "minutes",
-    max_points: int = MAX_PLOT_POINTS,
-) -> None:
-    """
-    Load one run folder and generate its plots.
+def analyze_folder(folder: Path, time_units: str, max_points: int) -> None:
+    processed = is_processed_folder(folder)
+    title = make_title(folder)
 
-    Always: temperature, pressure, heat exchanger flow.
-    When the columns/files exist: main loop flow, rod voltage, rod power.
-    """
     print(flush=True)
-    print("Using data folder:", flush=True)
-    print(DATA_DIR, flush=True)
-    print(flush=True)
-    print("Run parent folder:", flush=True)
-    print(RUN_PARENT, flush=True)
-    print(flush=True)
-    print("Analyzing run folder:", flush=True)
-    print(run_folder, flush=True)
+    print(f"Test: {folder.name}", flush=True)
+    print(f"Type: {'processed 10-minute window' if processed else 'raw run'}", flush=True)
+    print(f"Folder: {folder}", flush=True)
+    print(f"Plot title: {title}", flush=True)
     print(flush=True)
 
-    temperature_csv = find_csv_file(run_folder, "temperature")
-    pressure_csv = find_csv_file(run_folder, "pressure")
-    flow_csv = find_csv_file(run_folder, "flow")
-    voltage_csv = find_optional_csv_file(run_folder, "voltage")
+    # ---- load everything and check it BEFORE drawing anything ---------------
+    csv_files = find_csv_files(folder)
 
-    print(f"Temperature CSV: {temperature_csv.name}", flush=True)
-    print(f"Pressure CSV:    {pressure_csv.name}", flush=True)
-    print(f"Flow CSV:        {flow_csv.name}", flush=True)
-    print(
-        f"Voltage CSV:     "
-        f"{voltage_csv.name if voltage_csv else '(not present in this run)'}",
-        flush=True,
-    )
+    data: dict[str, pd.DataFrame] = {}
+    for kind in KINDS:
+        df, n_inf = read_clean_csv(csv_files[kind])
+        data[kind] = df
+        print(f"{csv_files[kind].name}: {len(df)} rows", flush=True)
+        if n_inf:
+            print(f"  Note: ignored {n_inf} Inf value(s) in {csv_files[kind].name}.", flush=True)
+
+    temperature_columns = get_temperature_columns(data["temperature"])
+    pressure_columns = get_pressure_columns(data["pressure"])
+    hx_flow_columns = get_hx_flow_columns(data["flow"])
+    main_loop_columns = get_main_loop_flow_columns(data["flow"])
+    power_columns = get_power_columns(data["power"])
+
+    problems = []
+    if not temperature_columns:
+        problems.append(f"  temperature: no temperature columns found. Columns: {list(data['temperature'].columns)}")
+    if not pressure_columns:
+        problems.append(f"  pressure: no pressure columns found. Columns: {list(data['pressure'].columns)}")
+    if not hx_flow_columns and not main_loop_columns:
+        problems.append(f"  flow: no GPM flow columns found. Columns: {list(data['flow'].columns)}")
+    if not power_columns:
+        problems.append(f"  power: no power column ('(W)' or 'power') found. Columns: {list(data['power'].columns)}")
+    if problems:
+        raise AnalysisError("Could not pick columns to plot:\n" + "\n".join(problems))
+
+    print(flush=True)
+    print(f"Temperature columns: {temperature_columns}", flush=True)
+    print(f"Pressure columns:    {pressure_columns}", flush=True)
+    print(f"Main loop flow:      {main_loop_columns or '(none)'}  -> left axis", flush=True)
+    print(f"Heat exchanger flow: {hx_flow_columns or '(none)'}  -> right axis", flush=True)
+    print(f"Power columns:       {power_columns}", flush=True)
+
+    if processed:
+        time_col = get_time_column(data["temperature"])
+        t_first = float(data["temperature"][time_col].iloc[0])
+        t_last = float(data["temperature"][time_col].iloc[-1])
+        print(
+            f"Window covers original test time {t_first / 60:.2f} to {t_last / 60:.2f} min "
+            f"({t_first:.1f} to {t_last:.1f} s)",
+            flush=True,
+        )
     print(flush=True)
 
-    temperature_df = read_clean_csv(temperature_csv)
-    pressure_df = read_clean_csv(pressure_csv)
-    flow_df = read_clean_csv(flow_csv)
-    voltage_df = read_clean_csv(voltage_csv) if voltage_csv else None
-
-    print(
-        f"Rows loaded -> temperature: {len(temperature_df)}, "
-        f"pressure: {len(pressure_df)}, flow: {len(flow_df)}"
-        + (f", voltage: {len(voltage_df)}" if voltage_df is not None else ""),
-        flush=True,
-    )
-    print(flush=True)
-
-    plots_dir = run_folder / "plots"
+    # ---- plots ---------------------------------------------------------------
+    plots_dir = folder / "plots"
     plots_dir.mkdir(exist_ok=True)
+    stem = folder.name
 
-    temperature_columns = get_temperature_columns(temperature_df)
-    pressure_columns = get_pressure_columns(pressure_df)
-    flow_columns = get_flow_columns(flow_df)
-    main_loop_flow_columns = get_main_loop_flow_columns(flow_df)
+    common = dict(processed=processed, time_units=time_units, max_points=max_points)
 
-    if voltage_df is not None:
-        voltage_columns = get_voltage_columns(voltage_df)
-        power_columns = get_power_columns(voltage_df)
-    else:
-        voltage_columns = []
-        power_columns = []
-
-    print("Temperature columns plotted:", flush=True)
-    print(temperature_columns, flush=True)
-    print(flush=True)
-
-    print("Pressure columns plotted:", flush=True)
-    print(pressure_columns, flush=True)
-    print(flush=True)
-
-    print("Heat exchanger flow columns plotted:", flush=True)
-    print(flow_columns, flush=True)
-    print(flush=True)
-
-    print("Main loop flow columns plotted:", flush=True)
-    print(main_loop_flow_columns or "(none found in this run)", flush=True)
-    print(flush=True)
-
-    print("Voltage columns plotted:", flush=True)
-    print(voltage_columns or "(none found in this run)", flush=True)
-    print(flush=True)
-
-    if power_columns:
-        print("Power columns plotted:", flush=True)
-        print(power_columns, flush=True)
-        print(flush=True)
-
-    plot_dataframe(
-        temperature_df,
-        title="Temperature Over Time",
-        y_label="Temperature (°C)",
-        output_stem=plots_dir / "temperature_over_time",
-        columns_to_plot=temperature_columns,
-        time_units=time_units,
-        max_points=max_points,
+    plot_groups(
+        data["temperature"], title,
+        [(temperature_columns, "Temperature (°C)")],
+        plots_dir / f"{stem}_temperature_over_time", **common,
     )
 
-    plot_dataframe(
-        pressure_df,
-        title="Pressure Over Time",
-        y_label="Pressure (psi)",
-        output_stem=plots_dir / "pressure_over_time",
-        columns_to_plot=pressure_columns,
-        time_units=time_units,
-        max_points=max_points,
+    plot_groups(
+        data["pressure"], title,
+        [(pressure_columns, "Pressure (psi)")],
+        plots_dir / f"{stem}_pressure_over_time", **common,
     )
 
-    plot_dataframe(
-        flow_df,
-        title="Heat Exchanger Flow Over Time",
-        y_label="Flow (GPM)",
-        output_stem=plots_dir / "flow_over_time",
-        columns_to_plot=flow_columns,
-        time_units=time_units,
-        max_points=max_points,
+    flow_groups = []
+    if main_loop_columns:
+        flow_groups.append((main_loop_columns, "Main loop flow (GPM)"))
+    if hx_flow_columns:
+        flow_groups.append((hx_flow_columns, "Heat exchanger flow (GPM)"))
+
+    plot_groups(
+        data["flow"], title, flow_groups,
+        plots_dir / f"{stem}_flow_over_time", **common,
     )
 
-    if main_loop_flow_columns:
-        plot_dataframe(
-            flow_df,
-            title="Main Loop Flow Over Time",
-            y_label="Flow (GPM)",
-            output_stem=plots_dir / "main_loop_flow_over_time",
-            columns_to_plot=main_loop_flow_columns,
-            time_units=time_units,
-            max_points=max_points,
-        )
-    else:
-        print("Skipping main loop flow plot: no matching column.", flush=True)
-        print(flush=True)
-
-    if voltage_df is not None and voltage_columns:
-        plot_dataframe(
-            voltage_df,
-            title="Rod Voltage Over Time",
-            y_label="Voltage (V)",
-            output_stem=plots_dir / "voltage_over_time",
-            columns_to_plot=voltage_columns,
-            time_units=time_units,
-            max_points=max_points,
-        )
-
-        print("Rod voltage variation over this run:", flush=True)
-        print_variation_summary(voltage_df, voltage_columns)
-        print(flush=True)
-    else:
-        print("Skipping voltage plot: no voltage.csv in this run.", flush=True)
-        print(flush=True)
-
-    if voltage_df is not None and power_columns:
-        plot_dataframe(
-            voltage_df,
-            title="Rod Power Over Time",
-            y_label="Power (W)",
-            output_stem=plots_dir / "power_over_time",
-            columns_to_plot=power_columns,
-            time_units=time_units,
-            max_points=max_points,
-        )
-
-        print("Rod power variation over this run:", flush=True)
-        print_variation_summary(voltage_df, power_columns)
-        print(flush=True)
+    power_unit = "kW" if all("(kw)" in c.lower() for c in power_columns) else "W"
+    plot_groups(
+        data["power"], title,
+        [(power_columns, f"Power ({power_unit})")],
+        plots_dir / f"{stem}_power_over_time", **common,
+    )
 
     print("Finished.", flush=True)
     print("Plots saved in:", flush=True)
     print(plots_dir, flush=True)
 
 
-def list_runs() -> None:
-    """Print all available run folders."""
-    run_folders = find_run_folders()
-
-    if not run_folders:
-        print(f"No run folders found in {RUN_PARENT}")
-        return
-
-    print(f"Available runs in {RUN_PARENT}:")
-    for run in run_folders:
-        print(f"  {run.name}")
-
-
 def get_script_arguments() -> list[str]:
-    """
-    Return command-line arguments, ignoring the ones Spyder/Jupyter inject.
-
-    When a script is run inside an IPython kernel, sys.argv can contain
-    things like ['-f', '/path/kernel-1234.json'], which argparse would
-    reject and then call sys.exit() on.
-    """
+    """Command-line arguments, ignoring the ones Spyder/Jupyter inject."""
     argv = sys.argv[1:]
 
     if any(arg == "-f" or arg.endswith(".json") for arg in argv):
@@ -873,22 +538,16 @@ def get_script_arguments() -> list[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Analyze SMR thermal loop LabVIEW CSV data."
+        description="Plot temperature, pressure, flow and power for one test folder."
     )
 
     parser.add_argument(
-        "--run",
-        default="latest",
+        "folder",
+        nargs="?",
         help=(
-            "Run folder to analyze. Use 'latest', a run folder name, "
-            "or a full path. Default: latest."
+            "Test folder name (looked up in raw/ then processed/), "
+            "e.g. 0_deg_test_1 or 0_deg_test_1_processed. A full path also works."
         ),
-    )
-
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List available run folders and exit.",
     )
 
     parser.add_argument(
@@ -910,16 +569,21 @@ def main() -> None:
     if unknown:
         print(f"Ignoring unrecognized arguments: {unknown}", flush=True)
 
-    if args.list:
-        list_runs()
-        return
+    try:
+        if not args.folder:
+            raise AnalysisError(
+                "No test folder given. Tell it which folder to plot, for example:\n"
+                "  python analyze_run.py 0_deg_test_1\n"
+                "  python analyze_run.py 0_deg_test_1_processed"
+            )
 
-    run_folder = resolve_run_folder(args.run)
-    analyze_run(
-        run_folder,
-        time_units=args.time_units,
-        max_points=args.max_points,
-    )
+        folder = resolve_folder(args.folder)
+        analyze_folder(folder, time_units=args.time_units, max_points=args.max_points)
+
+    except AnalysisError as error:
+        print("\n*** NO PLOTS WERE CREATED ***")
+        print(str(error))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
