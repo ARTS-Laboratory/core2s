@@ -6,11 +6,18 @@ function result = estimateBypassValvePSO(labDataFile, modelName, varargin)
 % estimate the bypass-valve angle that best reproduces the selected data
 % window.
 %
-% REQUIRED INPUTS
-%   labDataFile : MAT-file containing equally sampled vectors:
+% DEFAULT FILES
+%   labDataFile : "PrimaryLoopRun_01.mat"
+%   modelName   : "SMR_PrimaryDT_v2"
+%
+% The defaults assume this function, the MAT-file, and the SLX model are on
+% the MATLAB path (normally the same working folder).  You may still supply
+% alternative files as the first two inputs for a later experiment.
+%
+% MAT-FILE CONTENTS
+%   labDataFile contains equally sampled vectors:
 %       time, P_upstream, P_downstream, T_primary
-%   modelName   : Simulink model name without the .slx extension, for
-%                 example "SMR_PrimaryDT_v1".
+%   modelName is the Simulink model name without the .slx extension.
 %
 % MODEL PREPARATION
 %   1. Add a variable named bypassOpeningEstimate immediately before the
@@ -23,34 +30,53 @@ function result = estimateBypassValvePSO(labDataFile, modelName, varargin)
 %      Their units must match the laboratory vectors (normally Pa and K).
 %
 % EXAMPLE
-%   result = estimateBypassValvePSO("PrimaryLoopRun_01.mat", ...
-%       "SMR_PrimaryDT_v1", "WindowSamples", 100, ...
+%   result = estimateBypassValvePSO([], [], "WindowSamples", 100, ...
 %       "PreviousAngleDeg", 35);
 %
 % The default search is deliberately local to the previous estimate.  This
 % prevents noise from producing implausibly large angle jumps during later
 % moving-window use.
 
+if nargin < 1
+    labDataFile = [];
+end
+if nargin < 2
+    modelName = [];
+end
+
 parser = inputParser;
-parser.addRequired('labDataFile', @(x) ischar(x) || isstring(x));
-parser.addRequired('modelName', @(x) ischar(x) || isstring(x));
-parser.addParameter('WindowSamples', 100, @(x) isnumeric(x) && isscalar(x) && x >= 2);
-parser.addParameter('PreviousAngleDeg', 45, @(x) isnumeric(x) && isscalar(x));
-parser.addParameter('MaxAngleStepDeg', 5, @(x) isnumeric(x) && isscalar(x) && x > 0);
+parser.addOptional('labDataFile', "PrimaryLoopRun_30deg_steady_state.mat", ...
+    @(x) isempty(x) || ischar(x) || isstring(x));
+parser.addOptional('modelName', "SMR_PrimaryDT_v2", ...
+    @(x) isempty(x) || ischar(x) || isstring(x));
+parser.addParameter('WindowSamples', 101, @(x) isnumeric(x) && isscalar(x) && x >= 2);
+parser.addParameter('PreviousAngleDeg', 30, @(x) isnumeric(x) && isscalar(x));
+parser.addParameter('MaxAngleStepDeg', 30, @(x) isnumeric(x) && isscalar(x) && x > 0);
 parser.addParameter('PressureScale', 1.0e4, @(x) isnumeric(x) && isscalar(x) && x > 0);
 parser.addParameter('TemperatureScale', 1.0, @(x) isnumeric(x) && isscalar(x) && x > 0);
 parser.addParameter('PressureWeight', 0.85, @(x) isnumeric(x) && isscalar(x) && x >= 0);
 parser.addParameter('TemperatureWeight', 0.15, @(x) isnumeric(x) && isscalar(x) && x >= 0);
-parser.addParameter('SwarmSize', 10, @(x) isnumeric(x) && isscalar(x) && x >= 2);
-parser.addParameter('MaxIterations', 15, @(x) isnumeric(x) && isscalar(x) && x >= 1);
+parser.addParameter('SwarmSize', 6, @(x) isnumeric(x) && isscalar(x) && x >= 2);
+parser.addParameter('MaxIterations', 5, @(x) isnumeric(x) && isscalar(x) && x >= 1);
 parser.parse(labDataFile, modelName, varargin{:});
 cfg = parser.Results;
+
+if isempty(cfg.labDataFile)
+    labDataFile = "PrimaryLoopRun_30deg_steady_state.mat";
+else
+    labDataFile = cfg.labDataFile;
+end
+if isempty(cfg.modelName)
+    modelName = "SMR_PrimaryDT_v2";
+else
+    modelName = cfg.modelName;
+end
 
 if abs(cfg.PressureWeight + cfg.TemperatureWeight - 1) > 1e-12
     error('PressureWeight and TemperatureWeight must sum to 1.');
 end
 
-modelName = char(SMR_PrimaryDT_v2);
+modelName = char(modelName);
 if ~bdIsLoaded(modelName)
     load_system(modelName);
 end
@@ -107,7 +133,8 @@ function J = localObjective(thetaDeg, measured, modelName, cfg)
 opening = min(max(thetaDeg / 90, 0), 1);
 
 in = Simulink.SimulationInput(modelName);
-in = in.setVariable('bypassOpeningEstimate', opening);
+in = in.setVariable('bypassOpeningEstimate', opening, ...
+    'Workspace', modelName);
 in = in.setModelParameter('StopTime', num2str(measured.stopTime));
 
 try
