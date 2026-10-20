@@ -1,23 +1,26 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 SMR thermal loop run analyzer.
 
 Makes four PDF plots (temperature, pressure, flow, power) for ONE test folder.
 Run it from Anaconda Prompt, in the "data" folder, like extract_steady_state.py:
 
-    python analyze_run.py 0_deg_test_1               a raw run in raw/
-    python analyze_run.py 0_deg_test_1_processed     a 10-minute window in processed/
+    python analyze_run.py bypass_valve_position_tests\raw\test_1\0_deg_test_1
+    python analyze_run.py inline_valve_position_tests\processed\test_1\0_deg_test_1_processed
 
-You can also give a nested name ("test_1\\0_deg_test_1") or a full path.
+Give the PATH to ONE test folder, starting from the data folder (or a full path).
+Quote it if it has spaces. Both raw runs and processed windows work.
 
 Expected structure:
 
     .../resources/v0.1.2/data/
         analyze_run.py
         extract_steady_state.py
-        valve_position_testing/
-            raw/<test_folder>/          flow.csv power.csv pressure.csv temperature.csv
-            processed/<test>_processed/ flow_steady_state.csv ... (from extract_steady_state.py)
+        <any test set folder>/
+            raw/<group>/<test_folder>/        flow.csv power.csv pressure.csv temperature.csv
+            processed/<group>/<test>_processed/  flow_steady_state.csv ... (from extract_steady_state.py)
+
+The script does not care what the folders are called.
 
 Output: a "plots" folder INSIDE the folder you analyzed, holding
     <folder>_temperature_over_time.pdf
@@ -89,45 +92,28 @@ try:
 except NameError:                              # code pasted into a console
     DATA_DIR = Path.cwd().resolve()
 
-TEST_ROOT = DATA_DIR / "valve_position_testing"
-RAW_DIR = TEST_ROOT / "raw"
-PROCESSED_DIR = TEST_ROOT / "processed"
-
-
 class AnalysisError(Exception):
     """Raised when something is wrong. The message is what gets printed."""
 
 
 def resolve_folder(argument: str) -> Path:
     """
-    Find the folder to analyze.
-
-    Looks in raw/ and processed/ (processed first when the name ends in
-    _processed), then treats the argument as a path.
+    Find the folder to analyze, given as a full path, a path from where you are
+    (normally the data folder), or a path from this script's folder.
     """
     given = Path(argument)
-
-    if given.is_absolute() and given.is_dir():
-        return given.resolve()
-
-    if given.name.endswith("_processed"):
-        bases = [PROCESSED_DIR, RAW_DIR]
-    else:
-        bases = [RAW_DIR, PROCESSED_DIR]
-
-    for base in bases:
-        candidate = base / argument
-        if candidate.is_dir():
-            return candidate.resolve()
 
     if given.is_dir():
         return given.resolve()
 
+    if not given.is_absolute() and (DATA_DIR / given).is_dir():
+        return (DATA_DIR / given).resolve()
+
     raise AnalysisError(
         f"Test folder not found: {argument}\n"
-        f"  Looked in: {RAW_DIR}\n"
-        f"             {PROCESSED_DIR}\n"
-        f"  and for it as a path from: {Path.cwd()}"
+        f"  Give the path to the test folder, starting from the data folder, e.g.\n"
+        f"    python analyze_run.py bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1\n"
+        f"  (Looked from: {Path.cwd()} and from: {DATA_DIR})"
     )
 
 
@@ -135,7 +121,7 @@ def is_processed_folder(folder: Path) -> bool:
     """True for a 10-minute-window folder made by extract_steady_state.py."""
     return (
         folder.name.endswith("_processed")
-        or folder.parent.name.lower() == "processed"
+        or any(parent.name.lower() == "processed" for parent in folder.parents)
     )
 
 
@@ -179,10 +165,14 @@ def find_csv_files(folder: Path) -> dict[str, Path]:
             missing.append(f"{kind}.csv")
 
     if missing:
+        hint = ""
+        if not available and any(p.is_dir() for p in folder.iterdir()):
+            hint = ("\n  This folder holds other folders, not CSVs. Give the path to ONE "
+                    "test folder (for example ...\\test_1\\0_deg_test_1).")
         raise AnalysisError(
             f"Missing CSV file(s) in {folder.name}: {', '.join(missing)}\n"
-            f"  Files found: {sorted(available) or 'none'}\n"
-            f"  (Is this a test folder? Give the name of a folder that holds the CSVs.)"
+            f"  Files found: {sorted(available) or 'none'}"
+            f"{hint}"
         )
 
     return found
@@ -545,8 +535,9 @@ def main() -> None:
         "folder",
         nargs="?",
         help=(
-            "Test folder name (looked up in raw/ then processed/), "
-            "e.g. 0_deg_test_1 or 0_deg_test_1_processed. A full path also works."
+            "Path to ONE test folder, starting from the data folder, e.g. "
+            "bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1 "
+            "(raw runs and processed windows both work)."
         ),
     )
 
@@ -572,9 +563,9 @@ def main() -> None:
     try:
         if not args.folder:
             raise AnalysisError(
-                "No test folder given. Tell it which folder to plot, for example:\n"
-                "  python analyze_run.py 0_deg_test_1\n"
-                "  python analyze_run.py 0_deg_test_1_processed"
+                "No test folder given. Give the path to the folder to plot, for example:\n"
+                "  python analyze_run.py bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1\n"
+                "  python analyze_run.py inline_valve_position_tests\\processed\\test_1\\0_deg_test_1_processed"
             )
 
         folder = resolve_folder(args.folder)

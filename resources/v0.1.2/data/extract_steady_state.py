@@ -1,20 +1,28 @@
-"""
+r"""
 extract_steady_state.py
 
 Finds the LAST 10-minute steady-state window in one CORE2S test run and writes
 that window out as trimmed CSVs (flow, power, pressure, temperature) plus one
 merged CSV.
 
-Usage (run from the data folder):
-    python extract_steady_state.py <test_folder_name>
-    python extract_steady_state.py <full/path/to/test_folder>
-    python extract_steady_state.py <test_folder_name> --overwrite
+Usage (run from the data folder). Give the PATH to ONE test folder, starting
+from the data folder (or a full path). Quote it if it has spaces:
 
-Folder layout expected:
-    data/                               <- this script lives here
-      valve_position_testing/
-        raw/<test_folder>/flow.csv, power.csv, pressure.csv, temperature.csv
-        processed/                      <- outputs go to processed/<test_folder>_processed/
+    python extract_steady_state.py bypass_valve_position_tests\raw\test_1\0_deg_test_1
+    python extract_steady_state.py bypass_valve_position_tests\raw\test_1\0_deg_test_1 bypass_valve_position_tests\processed\test_1
+    python extract_steady_state.py bypass_valve_position_tests\raw\test_1\0_deg_test_1 --overwrite
+
+The optional second argument is the folder to put the results in. The results
+folder is created inside it, named <test_folder>_processed. It must already exist.
+
+If you leave it out, results go to the matching place under the "processed"
+folder that sits next to "raw", mirroring the folders between raw and the test:
+
+    bypass_valve_position_tests\raw\test_1\0_deg_test_1
+ -> bypass_valve_position_tests\processed\test_1\0_deg_test_1_processed
+
+(The "processed" folder must exist; folders inside it, like test_1, are created.)
+Each test folder holds flow.csv, power.csv, pressure.csv and temperature.csv.
 
 If ANY check fails (missing CSV, timestamp gap, no steady state, window shorter
 than 10 min, files not on a shared clock), the reason is printed and NOTHING
@@ -55,8 +63,6 @@ CSV_NAMES = ["flow", "power", "pressure", "temperature"]
 # =============================================================================
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-RAW_DIR = SCRIPT_DIR / "valve_position_testing" / "raw"
-PROCESSED_DIR = SCRIPT_DIR / "valve_position_testing" / "processed"
 
 
 class CheckFailed(Exception):
@@ -66,16 +72,57 @@ class CheckFailed(Exception):
 # -----------------------------------------------------------------------------
 # Loading and basic checks
 # -----------------------------------------------------------------------------
-def find_test_folder(arg):
+def resolve_dir(arg):
+    """A folder given as a full path, or relative to where you are (the data
+    folder), or relative to this script's folder. Returns None if not found."""
     p = Path(arg)
     if p.is_dir():
         return p.resolve()
-    if (RAW_DIR / arg).is_dir():
-        return (RAW_DIR / arg).resolve()
+    if not p.is_absolute() and (SCRIPT_DIR / p).is_dir():
+        return (SCRIPT_DIR / p).resolve()
+    return None
+
+
+def find_test_folder(arg):
+    folder = resolve_dir(arg)
+    if folder is None:
+        raise CheckFailed(
+            f"Test folder not found: {arg}\n"
+            f"  Give the path to the test folder, starting from the data folder, e.g.\n"
+            f"    python extract_steady_state.py bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1\n"
+            f"  (Looked from: {Path.cwd()} and from: {SCRIPT_DIR})"
+        )
+    return folder
+
+
+def find_destination(test_folder, dest_arg):
+    """Return the folder the <test>_processed folder will be created inside."""
+    if dest_arg:
+        dest = resolve_dir(dest_arg)
+        if dest is None:
+            raise CheckFailed(
+                f"Destination folder not found: {dest_arg}\n"
+                f"  It must already exist (the script won't create it, so a typo can't\n"
+                f"  make a stray folder). Create it, or leave the destination off to use\n"
+                f"  the matching folder under 'processed'."
+            )
+        return dest
+
+    # No destination given: mirror the path under the 'processed' folder that
+    # sits next to the nearest 'raw' folder above the test folder.
+    for ancestor in test_folder.parents:
+        if ancestor.name.lower() == "raw":
+            processed_root = ancestor.parent / "processed"
+            if not processed_root.is_dir():
+                raise CheckFailed(
+                    f"'processed' folder not found next to 'raw': {processed_root}\n"
+                    f"  Create it, or give a destination folder as the second argument."
+                )
+            return processed_root / test_folder.parent.relative_to(ancestor)
+
     raise CheckFailed(
-        f"Test folder not found.\n"
-        f"  Looked for: {p.resolve()}\n"
-        f"  and:        {RAW_DIR / arg}"
+        f"Can't tell where to put the results: {test_folder} is not inside a folder named 'raw'.\n"
+        f"  Give a destination folder as the second argument."
     )
 
 
@@ -83,10 +130,15 @@ def load_csvs(folder):
     files = {f.name.lower(): f for f in folder.glob("*.csv")}
     missing = [n for n in CSV_NAMES if f"{n}.csv" not in files]
     if missing:
+        hint = ""
+        if not files and any(p.is_dir() for p in folder.iterdir()):
+            hint = ("\n  This folder holds other folders, not CSVs. Give the path to ONE "
+                    "test folder (for example ...\\test_1\\0_deg_test_1).")
         raise CheckFailed(
             f"Missing CSV file(s) in {folder.name}: "
             + ", ".join(f"{m}.csv" for m in missing)
             + f"\n  Files found: {sorted(files) or 'none'}"
+            + hint
         )
 
     data = {}
@@ -352,7 +404,11 @@ def merge_window(trimmed):
 
 def main():
     ap = argparse.ArgumentParser(description="Extract the last steady-state window.")
-    ap.add_argument("test", help="test folder name (in raw/) or full path")
+    ap.add_argument("test", help="path to ONE test folder, e.g. "
+                    "bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1")
+    ap.add_argument("destination", nargs="?", default=None,
+                    help="optional folder to put the results in (must exist). "
+                         "Default: the matching folder under 'processed' next to 'raw'.")
     ap.add_argument("--overwrite", action="store_true",
                     help="replace an existing processed folder for this test")
     args = ap.parse_args()
@@ -361,14 +417,13 @@ def main():
         folder = find_test_folder(args.test)
         print(f"Test: {folder.name}")
 
-        out_dir = PROCESSED_DIR / f"{folder.name}_processed"
+        dest = find_destination(folder, args.destination)
+        out_dir = dest / f"{folder.name}_processed"
         if out_dir.exists() and not args.overwrite:
             raise CheckFailed(
                 f"Output folder already exists: {out_dir}\n"
                 "  Re-run with --overwrite to replace it."
             )
-        if not PROCESSED_DIR.is_dir():
-            raise CheckFailed(f"'processed' folder not found: {PROCESSED_DIR}")
 
         data = load_csvs(folder)
         check_gaps(data)
