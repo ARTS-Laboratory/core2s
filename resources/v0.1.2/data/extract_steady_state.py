@@ -27,6 +27,11 @@ Each test folder holds flow.csv, power.csv, pressure.csv and temperature.csv.
 If ANY check fails (missing CSV, timestamp gap, no steady state, window shorter
 than 10 min, files not on a shared clock), the reason is printed and NOTHING
 is written.
+
+Dropouts: if a file briefly has Inf/blank values (or, in flow.csv, a 0.0000 main
+loop flow) for up to 3 samples in a row between normal readings, those values are
+left blank and ignored (the timestamps stay). Longer runs of Inf/blank stop the
+script, and a window with more than 10% blank samples is rejected.
 """
 
 import argparse
@@ -55,6 +60,17 @@ FLOW_MAX_VARIATION = 0.05         # window std / mean must be below this (5%)
 
 STARTUP_SECONDS = 10.0            # NaN/Inf rows in the first N seconds are skipped;
                                   # NaN/Inf anywhere later stops the script
+                                  # (except isolated flow dropouts, below)
+
+# Dropouts: the data logger sometimes writes Inf/blank values (and in flow.csv a
+# 0.0000 main loop flow) for a sample or two, then recovers. In ANY of the four
+# files such short runs are blanked (the timestamps stay, so the files still line
+# up) and ignored.
+MAX_DROPOUT_RUN = 3               # longest run of consecutive bad samples to ignore
+MAX_DROPOUT_FRACTION = 0.10       # a window with more than this share of blanked
+                                  # flow samples is rejected as not trustworthy
+DROPOUT_ZERO_COLS = "main loop"   # a flow column whose name has this text and reads
+                                  # exactly 0 counts as a dropout (if short)
 GAP_FACTOR = 3.0                  # a gap = time step > GAP_FACTOR x typical step
 CLOCK_TOLERANCE_S = 0.5           # max time offset when merging the four files
 
@@ -126,6 +142,82 @@ def find_destination(test_folder, dest_arg):
     )
 
 
+def blank_dropouts(df, name):
+    """Blank short, isolated dropouts in one CSV. Returns the cleaned df.
+
+    A dropout sample is a row where a value is blank/NaN/Inf (any file), or - in
+    flow.csv only - where a main loop flow column reads exactly 0. Runs of up to MAX_DROPOUT_RUN such rows that sit
+    between normal readings are blanked (set to NaN) - never deleted or filled in,
+    so the timestamps stay and the four files still line up.
+
+      * a longer run containing blank/NaN/Inf -> stop (a real data loss)
+      * a longer run of pure zeros            -> left alone (a real pump-off,
+                                                 judged by the steady-state check)
+    """
+    t = df[TIME_COL].to_numpy(float)
+    value_cols = [c for c in df.columns if c != TIME_COL]
+    vals = df[value_cols]
+
+    nonfinite = vals.isna().to_numpy()                       # Inf already -> NaN
+    zero_cols = [c for c in value_cols
+                 if name == "flow" and DROPOUT_ZERO_COLS.lower() in c.lower()
+                 and "(gpm)" in c.lower()]
+    zeros = np.zeros_like(nonfinite)
+    for c in zero_cols:
+        zeros[:, value_cols.index(c)] = (vals[c].to_numpy(float) == 0.0)
+
+    bad_row = nonfinite.any(axis=1) | zeros.any(axis=1)
+    if not bad_row.any():
+        return df
+
+    # Find runs of consecutive bad rows.
+    idx = np.where(bad_row)[0]
+    breaks = np.where(np.diff(idx) > 1)[0] + 1
+    runs = [(r[0], r[-1]) for r in np.split(idx, breaks)]
+
+    blank = np.zeros_like(nonfinite)
+    n_events, n_samples, per_col = 0, 0, {}
+    first_t = last_t = None
+    for a, b in runs:
+        length = b - a + 1
+        has_nonfinite = bool(nonfinite[a:b + 1].any())
+        bounded = a > 0 and b < len(df) - 1
+        if length > MAX_DROPOUT_RUN or not bounded:
+            if has_nonfinite:
+                why = (f"{length} bad sample(s) in a row (limit {MAX_DROPOUT_RUN})"
+                       if length > MAX_DROPOUT_RUN else
+                       "the run touches the start or end of the file")
+                raise CheckFailed(
+                    f"{name}.csv has a dropout that is too long to ignore: "
+                    f"{why}, from {t[a]:.1f} s to {t[b]:.1f} s.\n"
+                    f"  Only isolated dropouts of up to {MAX_DROPOUT_RUN} samples between "
+                    "normal readings are ignored."
+                )
+            continue                    # long run of pure zeros = real, leave it
+        # isolated dropout: blank every bad cell in these rows
+        for r in range(a, b + 1):
+            blank[r] |= nonfinite[r] | zeros[r]
+        n_events += 1
+        n_samples += length
+        first_t = t[a] if first_t is None else first_t
+        last_t = t[b]
+        for j in np.where(blank[a:b + 1].any(axis=0))[0]:
+            per_col[value_cols[j]] = per_col.get(value_cols[j], 0) + int(blank[a:b + 1, j].sum())
+
+    if n_events:
+        df = df.copy()
+        arr = df[value_cols].to_numpy(float).copy()
+        arr[blank] = np.nan
+        df[value_cols] = arr
+        what = "Inf/blank, or 0.0000 main loop flow" if name == "flow" else "Inf/blank"
+        print(f"Note: {name}.csv - ignored {n_samples} dropout sample(s) in {n_events} "
+              f"isolated event(s) ({what}), "
+              f"between {first_t:.1f} s and {last_t:.1f} s.")
+        for c, n in per_col.items():
+            print(f"        {c}: {n} value(s) blanked")
+    return df
+
+
 def load_csvs(folder):
     files = {f.name.lower(): f for f in folder.glob("*.csv")}
     missing = [n for n in CSV_NAMES if f"{n}.csv" not in files]
@@ -173,14 +265,9 @@ def load_csvs(folder):
                   f"(up to {t[cut - 1]:.1f} s).")
             df = df.iloc[cut:].reset_index(drop=True)
 
-        # Any NaN/Inf after that is a real dropout -> stop.
-        if df.isna().any().any():
-            bad_cols = df.columns[df.isna().any()].tolist()
-            first_bad = df[TIME_COL][df.isna().any(axis=1)].iloc[0]
-            raise CheckFailed(
-                f"{name}.csv has blank/NaN/Inf values in: {bad_cols}\n"
-                f"  First one at {first_bad:.1f} s (after the startup period)."
-            )
+        # Short isolated dropouts (all files) are blanked and ignored; longer
+        # runs of NaN/Inf stop the script (inside blank_dropouts).
+        df = blank_dropouts(df, name)
         data[name] = df
     return data
 
@@ -217,24 +304,33 @@ def rolling_slope(t, x, start):
     """Least-squares slope of x vs t over samples start[i]..i (inclusive)."""
     t = t - t[0]
     c = lambda a: np.concatenate([[0.0], np.cumsum(a)])
-    St, Sx, Stt, Stx, S1 = c(t), c(x), c(t * t), c(t * x), c(np.ones_like(t))
+    ok = np.isfinite(x)                      # blank samples are skipped
+    t, x = np.where(ok, t, 0.0), np.where(ok, x, 0.0)
+    St, Sx, Stt, Stx, S1 = c(t), c(x), c(t * t), c(t * x), c(ok.astype(float))
     e = np.arange(len(t)) + 1
     n = S1[e] - S1[start]
     st, sx = St[e] - St[start], Sx[e] - Sx[start]
     stt, stx = Stt[e] - Stt[start], Stx[e] - Stx[start]
     den = n * stt - st * st
     with np.errstate(invalid="ignore", divide="ignore"):
-        return np.where(den > 0, (n * stx - st * sx) / den, np.nan)
+        slope = np.where(den > 0, (n * stx - st * sx) / den, np.nan)
+    return slope, 1.0 - n / (e - start)
 
 
 def rolling_mean_std(x, start):
+    """Rolling mean / std over each window, ignoring blank (NaN) samples.
+    Also returns the share of samples in each window that were blank."""
     c = lambda a: np.concatenate([[0.0], np.cumsum(a)])
-    S, SS = c(x), c(x * x)
+    ok = np.isfinite(x)
+    xv = np.where(ok, x, 0.0)
+    S, SS, V = c(xv), c(xv * xv), c(ok.astype(float))
     e = np.arange(len(x)) + 1
-    n = e - start
-    m = (S[e] - S[start]) / n
-    var = np.maximum((SS[e] - SS[start]) / n - m * m, 0.0)
-    return m, np.sqrt(var)
+    n_all = e - start
+    n = V[e] - V[start]                              # valid samples in the window
+    with np.errstate(invalid="ignore", divide="ignore"):
+        m = np.where(n > 0, (S[e] - S[start]) / n, np.nan)
+        var = np.maximum(np.where(n > 0, (SS[e] - SS[start]) / n, np.nan) - m * m, 0.0)
+    return m, np.sqrt(var), 1.0 - n / n_all
 
 
 def columns_with_unit(df, unit):
@@ -272,10 +368,13 @@ def find_last_window(data):
 
     start = window_starts(t, win_s)
     full = (t - win_s) >= t[0]                     # window fully inside the data
-    slopes = {c: rolling_slope(t, temp[c].to_numpy(float), start) * 60.0
-              for c in tc_cols}                    # deg C / min
+    slopes, temp_miss = {}, np.zeros_like(t)
+    for c in tc_cols:
+        sl, miss = rolling_slope(t, temp[c].to_numpy(float), start)
+        slopes[c] = sl * 60.0                      # deg C / min
+        temp_miss = np.maximum(temp_miss, miss)    # share of blank samples
     worst = np.max(np.abs(np.vstack(list(slopes.values()))), axis=0)
-    temp_ok = full & (worst < TEMP_SLOPE_MAX)
+    temp_ok = full & (worst < TEMP_SLOPE_MAX) & (temp_miss <= MAX_DROPOUT_FRACTION)
 
     # --- power / flow criteria (evaluated at each temperature end time) -------
     def onoff_steady(df, cols, on_min, max_var, label):
@@ -285,13 +384,14 @@ def find_last_window(data):
         ok = np.ones_like(t, dtype=bool)
         reasons = {}
         for c in cols:
-            m, s = rolling_mean_std(df[c].to_numpy(float), st)
-            m, s = m[idx], s[idx]
-            on = m >= on_min
+            m, s, miss = rolling_mean_std(df[c].to_numpy(float), st)
+            m, s, miss = m[idx], s[idx], miss[idx]
+            enough = miss <= MAX_DROPOUT_FRACTION     # too many blanks -> reject
             with np.errstate(invalid="ignore", divide="ignore"):
+                on = m >= on_min
                 steady = np.where(on, s / m, np.inf) < max_var
-            reasons[c] = (on, steady)
-            ok &= on & steady
+            reasons[c] = (on, steady, miss)
+            ok &= enough & on & steady
         return ok, reasons
 
     power_ok = np.ones_like(temp_ok)
@@ -361,8 +461,12 @@ def explain_failure(t, full, worst, slopes, temp_ok, power_info, flow_info):
             ("power", power_info, POWER_MIN_W, POWER_MAX_VARIATION),
             ("flow", flow_info, FLOW_MIN_GPM, FLOW_MAX_VARIATION),
         ]:
-            for c, (on, steady) in infos.items():
-                if not on[last_t]:
+            for c, (on, steady, miss) in infos.items():
+                if miss[last_t] > MAX_DROPOUT_FRACTION:
+                    lines.append(
+                        f"    {c}: too many dropout samples ({miss[last_t]:.0%} of the "
+                        f"window blank, limit {MAX_DROPOUT_FRACTION:.0%})")
+                elif not on[last_t]:
                     lines.append(f"    {c}: OFF (mean below {on_min})")
                 elif not steady[last_t]:
                     lines.append(f"    {c}: not steady (varies more than {var:.0%})")
@@ -390,10 +494,15 @@ def merge_window(trimmed):
                 rename[c] = f"{c} [{name}]"
         df = df.rename(columns=rename)
         used |= set(df.columns)
+        # Marker column: blank flow cells (ignored dropouts) are intentional, so
+        # "no match" is judged by the marker, not by NaN values.
+        df["__matched__"] = 1.0
         merged = pd.merge_asof(
             merged, df, on=TIME_COL, direction="nearest",
             tolerance=CLOCK_TOLERANCE_S)
-        if merged.isna().any().any():
+        unmatched = merged["__matched__"].isna().any()
+        merged = merged.drop(columns="__matched__")
+        if unmatched:
             raise CheckFailed(
                 f"{name}.csv timestamps don't line up with temperature.csv "
                 f"(no {name} sample within {CLOCK_TOLERANCE_S} s of some temperature "
@@ -458,6 +567,12 @@ def main():
         print(f"  {c}: {s:+.4f}")
     if win["excluded"]:
         print(f"Not used for steady-state check: {', '.join(win['excluded'])}")
+    for n, df in trimmed.items():
+        cols = [c for c in df.columns if c != TIME_COL]
+        blanks = int(df[cols].isna().any(axis=1).sum())
+        if blanks:
+            print(f"Dropouts left blank inside the window: {n}.csv {blanks} of {len(df)} "
+                  f"samples ({blanks / len(df):.1%}, limit {MAX_DROPOUT_FRACTION:.0%}).")
     print(f"\nWrote to {out_dir}:")
     for f in sorted(out_dir.glob("*.csv")):
         print(f"  {f.name}")

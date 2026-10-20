@@ -67,6 +67,12 @@ SAVE_PDF = True
 SAVE_PNG = False
 PNG_DPI = 150
 
+# Flow dropouts: the flow meter sometimes returns Inf/blank, or a 0.0000 main loop
+# flow, for a sample or two. Runs of up to this many samples between normal
+# readings are ignored in the flow plot (the line just joins the readings on
+# either side). Longer stretches are drawn as they are.
+MAX_DROPOUT_RUN = 3
+
 # Non-interactive backend: no figure windows, faster, no Spyder/Qt stalls.
 USE_NON_INTERACTIVE_BACKEND = True
 
@@ -246,6 +252,50 @@ def is_power_column(column_name: str) -> bool:
     return any(k in lower for k in ["(w)", "(kw)", "power", "watt"])
 
 
+def ignore_flow_dropouts(df: pd.DataFrame, main_loop_columns: list[str]) -> tuple[pd.DataFrame, int, int]:
+    """
+    Blank short, isolated flow dropouts (flow.csv only; the file is not changed).
+
+    A dropout sample is a row where a flow (GPM) column is blank/Inf, or a main
+    loop flow column reads exactly 0. Runs of up to MAX_DROPOUT_RUN such rows that
+    sit between normal readings are set to blank. Longer stretches (for example a
+    real pump stop) are left exactly as they are.
+
+    Returns the cleaned dataframe, the number of dropout samples ignored, and the
+    number of longer stretches that were left alone.
+    """
+    gpm_columns = [c for c in df.columns if "(gpm)" in c.lower()]
+    if not gpm_columns:
+        return df, 0, 0
+
+    blank = df[gpm_columns].isna().to_numpy()
+    zero = np.zeros_like(blank)
+    for col in main_loop_columns:
+        if col in gpm_columns:
+            zero[:, gpm_columns.index(col)] = df[col].to_numpy(dtype=float) == 0.0
+
+    bad_row = (blank | zero).any(axis=1)
+    if not bad_row.any():
+        return df, 0, 0
+
+    idx = np.where(bad_row)[0]
+    runs = [(r[0], r[-1]) for r in np.split(idx, np.where(np.diff(idx) > 1)[0] + 1)]
+
+    values = df[gpm_columns].to_numpy(dtype=float).copy()
+    ignored = left_alone = 0
+    for a, b in runs:
+        length = b - a + 1
+        if length <= MAX_DROPOUT_RUN and a > 0 and b < len(df) - 1:
+            values[a:b + 1][zero[a:b + 1]] = np.nan
+            ignored += length
+        else:
+            left_alone += 1
+
+    df = df.copy()
+    df[gpm_columns] = values
+    return df, ignored, left_alone
+
+
 def value_columns(df: pd.DataFrame) -> list[str]:
     time_col = get_time_column(df)
     return [c for c in df.columns if c != time_col]
@@ -346,9 +396,11 @@ def plot_groups(
             color_index += 1
             group_color = group_color or color
 
-            (line,) = axis.plot(
-                x,
-                df_plot[col].to_numpy(dtype=float),
+            y = df_plot[col].to_numpy(dtype=float)
+            ok = np.isfinite(y)                  # blank samples are skipped; the
+            (line,) = axis.plot(                 # line joins the readings around them
+                x[ok],
+                y[ok],
                 label=col,
                 linewidth=1.0,
                 color=color,
@@ -437,6 +489,15 @@ def analyze_folder(folder: Path, time_units: str, max_points: int) -> None:
         print(f"{csv_files[kind].name}: {len(df)} rows", flush=True)
         if n_inf:
             print(f"  Note: ignored {n_inf} Inf value(s) in {csv_files[kind].name}.", flush=True)
+
+    data["flow"], n_dropouts, n_long = ignore_flow_dropouts(
+        data["flow"], get_main_loop_flow_columns(data["flow"]))
+    if n_dropouts:
+        print(f"  Note: ignored {n_dropouts} flow dropout sample(s) (Inf/blank or 0.0000 "
+              f"main loop flow, up to {MAX_DROPOUT_RUN} in a row) in flow.", flush=True)
+    if n_long:
+        print(f"  Note: {n_long} longer stretch(es) of blank/zero flow were left as they are.",
+              flush=True)
 
     temperature_columns = get_temperature_columns(data["temperature"])
     pressure_columns = get_pressure_columns(data["pressure"])
