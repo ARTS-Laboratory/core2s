@@ -1,23 +1,26 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 SMR thermal loop run analyzer.
 
 Makes four PDF plots (temperature, pressure, flow, power) for ONE test folder.
 Run it from Anaconda Prompt, in the "data" folder, like extract_steady_state.py:
 
-    python analyze_run.py 0_deg_test_1               a raw run in raw/
-    python analyze_run.py 0_deg_test_1_processed     a 10-minute window in processed/
+    python analyze_run.py bypass_valve_position_tests\raw\test_1\0_deg_test_1
+    python analyze_run.py inline_valve_position_tests\processed\test_1\0_deg_test_1_processed
 
-You can also give a nested name ("test_1\\0_deg_test_1") or a full path.
+Give the PATH to ONE test folder, starting from the data folder (or a full path).
+Quote it if it has spaces. Both raw runs and processed windows work.
 
 Expected structure:
 
     .../resources/v0.1.2/data/
         analyze_run.py
         extract_steady_state.py
-        valve_position_testing/
-            raw/<test_folder>/          flow.csv power.csv pressure.csv temperature.csv
-            processed/<test>_processed/ flow_steady_state.csv ... (from extract_steady_state.py)
+        <any test set folder>/
+            raw/<group>/<test_folder>/        flow.csv power.csv pressure.csv temperature.csv
+            processed/<group>/<test>_processed/  flow_steady_state.csv ... (from extract_steady_state.py)
+
+The script does not care what the folders are called.
 
 Output: a "plots" folder INSIDE the folder you analyzed, holding
     <folder>_temperature_over_time.pdf
@@ -64,6 +67,12 @@ SAVE_PDF = True
 SAVE_PNG = False
 PNG_DPI = 150
 
+# Flow dropouts: the flow meter sometimes returns Inf/blank, or a 0.0000 main loop
+# flow, for a sample or two. Runs of up to this many samples between normal
+# readings are ignored in the flow plot (the line just joins the readings on
+# either side). Longer stretches are drawn as they are.
+MAX_DROPOUT_RUN = 3
+
 # Non-interactive backend: no figure windows, faster, no Spyder/Qt stalls.
 USE_NON_INTERACTIVE_BACKEND = True
 
@@ -89,45 +98,28 @@ try:
 except NameError:                              # code pasted into a console
     DATA_DIR = Path.cwd().resolve()
 
-TEST_ROOT = DATA_DIR / "valve_position_testing"
-RAW_DIR = TEST_ROOT / "raw"
-PROCESSED_DIR = TEST_ROOT / "processed"
-
-
 class AnalysisError(Exception):
     """Raised when something is wrong. The message is what gets printed."""
 
 
 def resolve_folder(argument: str) -> Path:
     """
-    Find the folder to analyze.
-
-    Looks in raw/ and processed/ (processed first when the name ends in
-    _processed), then treats the argument as a path.
+    Find the folder to analyze, given as a full path, a path from where you are
+    (normally the data folder), or a path from this script's folder.
     """
     given = Path(argument)
-
-    if given.is_absolute() and given.is_dir():
-        return given.resolve()
-
-    if given.name.endswith("_processed"):
-        bases = [PROCESSED_DIR, RAW_DIR]
-    else:
-        bases = [RAW_DIR, PROCESSED_DIR]
-
-    for base in bases:
-        candidate = base / argument
-        if candidate.is_dir():
-            return candidate.resolve()
 
     if given.is_dir():
         return given.resolve()
 
+    if not given.is_absolute() and (DATA_DIR / given).is_dir():
+        return (DATA_DIR / given).resolve()
+
     raise AnalysisError(
         f"Test folder not found: {argument}\n"
-        f"  Looked in: {RAW_DIR}\n"
-        f"             {PROCESSED_DIR}\n"
-        f"  and for it as a path from: {Path.cwd()}"
+        f"  Give the path to the test folder, starting from the data folder, e.g.\n"
+        f"    python analyze_run.py bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1\n"
+        f"  (Looked from: {Path.cwd()} and from: {DATA_DIR})"
     )
 
 
@@ -135,7 +127,7 @@ def is_processed_folder(folder: Path) -> bool:
     """True for a 10-minute-window folder made by extract_steady_state.py."""
     return (
         folder.name.endswith("_processed")
-        or folder.parent.name.lower() == "processed"
+        or any(parent.name.lower() == "processed" for parent in folder.parents)
     )
 
 
@@ -179,10 +171,14 @@ def find_csv_files(folder: Path) -> dict[str, Path]:
             missing.append(f"{kind}.csv")
 
     if missing:
+        hint = ""
+        if not available and any(p.is_dir() for p in folder.iterdir()):
+            hint = ("\n  This folder holds other folders, not CSVs. Give the path to ONE "
+                    "test folder (for example ...\\test_1\\0_deg_test_1).")
         raise AnalysisError(
             f"Missing CSV file(s) in {folder.name}: {', '.join(missing)}\n"
-            f"  Files found: {sorted(available) or 'none'}\n"
-            f"  (Is this a test folder? Give the name of a folder that holds the CSVs.)"
+            f"  Files found: {sorted(available) or 'none'}"
+            f"{hint}"
         )
 
     return found
@@ -254,6 +250,50 @@ def is_raw_voltage_column(column_name: str) -> bool:
 def is_power_column(column_name: str) -> bool:
     lower = column_name.lower()
     return any(k in lower for k in ["(w)", "(kw)", "power", "watt"])
+
+
+def ignore_flow_dropouts(df: pd.DataFrame, main_loop_columns: list[str]) -> tuple[pd.DataFrame, int, int]:
+    """
+    Blank short, isolated flow dropouts (flow.csv only; the file is not changed).
+
+    A dropout sample is a row where a flow (GPM) column is blank/Inf, or a main
+    loop flow column reads exactly 0. Runs of up to MAX_DROPOUT_RUN such rows that
+    sit between normal readings are set to blank. Longer stretches (for example a
+    real pump stop) are left exactly as they are.
+
+    Returns the cleaned dataframe, the number of dropout samples ignored, and the
+    number of longer stretches that were left alone.
+    """
+    gpm_columns = [c for c in df.columns if "(gpm)" in c.lower()]
+    if not gpm_columns:
+        return df, 0, 0
+
+    blank = df[gpm_columns].isna().to_numpy()
+    zero = np.zeros_like(blank)
+    for col in main_loop_columns:
+        if col in gpm_columns:
+            zero[:, gpm_columns.index(col)] = df[col].to_numpy(dtype=float) == 0.0
+
+    bad_row = (blank | zero).any(axis=1)
+    if not bad_row.any():
+        return df, 0, 0
+
+    idx = np.where(bad_row)[0]
+    runs = [(r[0], r[-1]) for r in np.split(idx, np.where(np.diff(idx) > 1)[0] + 1)]
+
+    values = df[gpm_columns].to_numpy(dtype=float).copy()
+    ignored = left_alone = 0
+    for a, b in runs:
+        length = b - a + 1
+        if length <= MAX_DROPOUT_RUN and a > 0 and b < len(df) - 1:
+            values[a:b + 1][zero[a:b + 1]] = np.nan
+            ignored += length
+        else:
+            left_alone += 1
+
+    df = df.copy()
+    df[gpm_columns] = values
+    return df, ignored, left_alone
 
 
 def value_columns(df: pd.DataFrame) -> list[str]:
@@ -356,9 +396,11 @@ def plot_groups(
             color_index += 1
             group_color = group_color or color
 
-            (line,) = axis.plot(
-                x,
-                df_plot[col].to_numpy(dtype=float),
+            y = df_plot[col].to_numpy(dtype=float)
+            ok = np.isfinite(y)                  # blank samples are skipped; the
+            (line,) = axis.plot(                 # line joins the readings around them
+                x[ok],
+                y[ok],
                 label=col,
                 linewidth=1.0,
                 color=color,
@@ -447,6 +489,15 @@ def analyze_folder(folder: Path, time_units: str, max_points: int) -> None:
         print(f"{csv_files[kind].name}: {len(df)} rows", flush=True)
         if n_inf:
             print(f"  Note: ignored {n_inf} Inf value(s) in {csv_files[kind].name}.", flush=True)
+
+    data["flow"], n_dropouts, n_long = ignore_flow_dropouts(
+        data["flow"], get_main_loop_flow_columns(data["flow"]))
+    if n_dropouts:
+        print(f"  Note: ignored {n_dropouts} flow dropout sample(s) (Inf/blank or 0.0000 "
+              f"main loop flow, up to {MAX_DROPOUT_RUN} in a row) in flow.", flush=True)
+    if n_long:
+        print(f"  Note: {n_long} longer stretch(es) of blank/zero flow were left as they are.",
+              flush=True)
 
     temperature_columns = get_temperature_columns(data["temperature"])
     pressure_columns = get_pressure_columns(data["pressure"])
@@ -545,8 +596,9 @@ def main() -> None:
         "folder",
         nargs="?",
         help=(
-            "Test folder name (looked up in raw/ then processed/), "
-            "e.g. 0_deg_test_1 or 0_deg_test_1_processed. A full path also works."
+            "Path to ONE test folder, starting from the data folder, e.g. "
+            "bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1 "
+            "(raw runs and processed windows both work)."
         ),
     )
 
@@ -572,9 +624,9 @@ def main() -> None:
     try:
         if not args.folder:
             raise AnalysisError(
-                "No test folder given. Tell it which folder to plot, for example:\n"
-                "  python analyze_run.py 0_deg_test_1\n"
-                "  python analyze_run.py 0_deg_test_1_processed"
+                "No test folder given. Give the path to the folder to plot, for example:\n"
+                "  python analyze_run.py bypass_valve_position_tests\\raw\\test_1\\0_deg_test_1\n"
+                "  python analyze_run.py inline_valve_position_tests\\processed\\test_1\\0_deg_test_1_processed"
             )
 
         folder = resolve_folder(args.folder)

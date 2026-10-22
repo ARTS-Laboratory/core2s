@@ -29,6 +29,7 @@ Cite as:
 
 @Misc{ARTSLabControlOrientedResearch,
   author = {{ARTS-L}ab},  
+  howpublished = {GitHub},   
   note   = {Accessed: 20xx-xx-xx},   
   title  = {Control-Oriented Research Environment for Energy Systems {CORE2S}},   
   year   = {20xx},   
