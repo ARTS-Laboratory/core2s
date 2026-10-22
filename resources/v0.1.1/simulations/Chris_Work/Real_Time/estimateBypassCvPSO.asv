@@ -1,0 +1,18 @@
+function result = estimateBypassCvPSO(labDataFile, modelName, varargin)
+
+if nargin < 1 || isempty(labDataFile)
+    labDataFile = 'PrimaryLoopRun_15deg.mat';
+end
+
+if nargin < 2 || isempty(modelName)
+    modelName = 'SMR_PrimaryDT_v2';
+end
+
+p = inputParser;
+
+p.addParameter('ValveAngleDeg', 15, @(x) isnumeric(x) && isfinite(x) && x >= 0 && x < 90);
+p.addParameter('CvScaleBounds', [0.1 3], @(x) isnumeric(x) && isvector(x) && numel(x) == 2 ...
+    && all(isfinite(x)) && x(1) > 0 && x(2) > x(1));
+p.addParameter('CvScaleVariable', 'bypassCvScale', @(x) ischar(x) || isstring(x));
+p.addParameter('WindowSamples', 120, @(x) isnumeric(x) && isscalar(x) && x >= 2 && ...
+    (is))
