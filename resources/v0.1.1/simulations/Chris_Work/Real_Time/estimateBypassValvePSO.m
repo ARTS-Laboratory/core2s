@@ -45,7 +45,7 @@ if nargin < 2
 end
 
 parser = inputParser;
-parser.addOptional('labDataFile', "PrimaryLoopRun_30deg_steady_state.mat", ...
+parser.addOptional('labDataFile', "PrimaryLoopRun_01.mat", ...
     @(x) isempty(x) || ischar(x) || isstring(x));
 parser.addOptional('modelName', "SMR_PrimaryDT_v2", ...
     @(x) isempty(x) || ischar(x) || isstring(x));
@@ -62,7 +62,7 @@ parser.parse(labDataFile, modelName, varargin{:});
 cfg = parser.Results;
 
 if isempty(cfg.labDataFile)
-    labDataFile = "PrimaryLoopRun_30deg_steady_state.mat";
+    labDataFile = "PrimaryLoopRun_15deg.mat";
 else
     labDataFile = cfg.labDataFile;
 end
@@ -118,7 +118,7 @@ objective = @(thetaDeg) localObjective(thetaDeg, measured, modelName, cfg);
     lowerBound, upperBound, options);
 
 result.angleDeg = thetaHat;
-result.normalizedOpening = thetaHat / 90;
+result.normalizedOpening = 1-thetaHat / 90;
 result.cost = cost;
 result.exitFlag = exitFlag;
 result.output = output;
@@ -130,7 +130,8 @@ end
 
 function J = localObjective(thetaDeg, measured, modelName, cfg)
 % Map the mechanically meaningful 0--90 degree angle into the valve input.
-opening = min(max(thetaDeg / 90, 0), 1);
+opening = 1- thetaDeg / 90;
+opening = min(max(opening, 0), 1);
 
 in = Simulink.SimulationInput(modelName);
 in = in.setVariable('bypassOpeningEstimate', opening, ...
