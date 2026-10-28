@@ -449,13 +449,15 @@ def plot_groups(
         bottom=bottom,
     )
 
+    # (Add the extension to the end of the name; Path.with_suffix would treat the
+    # dot in a folder name like "2.5kW" as an extension and cut the name short.)
     if SAVE_PDF:
-        pdf_path = output_stem.with_suffix(".pdf")
+        pdf_path = output_stem.parent / (output_stem.name + ".pdf")
         fig.savefig(pdf_path, facecolor="white")
         print(f"  Saved: {pdf_path}", flush=True)
 
     if SAVE_PNG:
-        png_path = output_stem.with_suffix(".png")
+        png_path = output_stem.parent / (output_stem.name + ".png")
         fig.savefig(png_path, dpi=PNG_DPI, facecolor="white")
         print(f"  Saved: {png_path}", flush=True)
 
