@@ -5,7 +5,7 @@ if nargin < 1 || isempty(labDataFile)
 end
 
 if nargin < 2 || isempty(modelName)
-    modelName = 'SMR_PrimaryDT_v2';
+    modelName = 'SMR_PrimaryDT_v3';
 end
 
 p = inputParser;

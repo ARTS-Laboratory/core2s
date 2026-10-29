@@ -32,20 +32,20 @@ if nargin < 1 || isempty(labDataFile)
     labDataFile = 'PumpClosedBypassRun.mat';
 end
 if nargin < 2 || isempty(modelName)
-    modelName = 'SMR_PrimaryDT_v2';
+    modelName = 'SMR_PrimaryDT_v3';
 end
 
 p = inputParser;
-p.addParameter('SpeedBoundsRadps', [250 420], @(x) isnumeric(x) && ...
+p.addParameter('SpeedBoundsRadps', [185 385], @(x) isnumeric(x) && ...
     isvector(x) && numel(x) == 2 && all(isfinite(x)) && x(1) > 0 && x(2) > x(1));
 p.addParameter('ValveAngleDeg', 90, @(x) isnumeric(x) && isscalar(x) && ...
     isfinite(x) && x >= 0 && x <= 90);
 p.addParameter('PumpSpeedVariable', 'pumpShaftSpeedRadps', @(x) ischar(x) || isstring(x));
-p.addParameter('WindowSamples', Inf, @(x) isnumeric(x) && isscalar(x) && x >= 2);
+p.addParameter('WindowSamples', 500, @(x) isnumeric(x) && isscalar(x) && x >= 2);
 p.addParameter('WarmupTime', 0, @(x) isnumeric(x) && isscalar(x) && isfinite(x) && x >= 0);
 p.addParameter('PressureScalePa', 1e4, @(x) isnumeric(x) && isscalar(x) && x > 0);
-p.addParameter('SwarmSize', 12, @(x) isnumeric(x) && isscalar(x) && x >= 2 && mod(x,1) == 0);
-p.addParameter('MaxIterations', 15, @(x) isnumeric(x) && isscalar(x) && x >= 1 && mod(x,1) == 0);
+p.addParameter('SwarmSize', 4, @(x) isnumeric(x) && isscalar(x) && x >= 2 && mod(x,1) == 0);
+p.addParameter('MaxIterations', 5, @(x) isnumeric(x) && isscalar(x) && x >= 1 && mod(x,1) == 0);
 p.parse(varargin{:});
 cfg = p.Results;
 cfg.PumpSpeedVariable = char(cfg.PumpSpeedVariable);
