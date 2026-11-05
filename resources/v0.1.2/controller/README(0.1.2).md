@@ -178,7 +178,7 @@ Steady state indicator fully upgraded; works like this:
 
 
 
-**LabVIEW\_SMR\_V7.3: CURRENT BEST MODEL**
+**LabVIEW\_SMR\_V7.3:**
 
 
 
@@ -186,9 +186,74 @@ Revamped front panel to make it easier to interpret data as system is running. A
 
 
 
-**LabVIEW\_SMR\_V7.5: CURRENT BEST MODEL**
+**LabVIEW\_SMR\_V7.5:**
 
 
 
 Added indicator for voltage across rod. DO NOT TRUST THE POWER SUPPLY READINGS, ONLY LABVIEWS: PSU indicates higher voltage than what is physically going across rod; resistance and general voltage drop results in about 1-1.5V lost to the rod.
+
+
+
+**LabVIEW\_SMR\_V7.6:**
+
+
+
+Changed file path to upload to 0.1.2/Data/002
+
+\-> don't think that this worked actually
+
+
+
+**LabVIEW\_SMR\_V7.61:**
+
+
+
+Fixed the HX flow meter readings so that it is much more accurate and smoother readings.
+
+Fixed the Raw Voltage readings from the NI 9201. Somewhere along the way, the display began getting the calculated P values, rather than the raw voltages from the NI Card
+
+
+
+**LabVIEW\_SMR\_V7.7:**
+
+
+
+Added Main Loop flow rate readings to front panel. Made it so that the LabVIEW now also saves the voltage over time, so we can see any voltage drops that happen and their affects on the temperature.
+
+
+
+**LabVIEW\_SMR\_V8:**
+
+
+
+The data acquisition for thermocouples was physically updated, adding a new cDAQ entirely. **This LabVIEW version is now the** **ONLY ONE THAT WILL WORK.** It must be tested later to ensure that the thermocouples are correct (that the T7 reading is actually the T7 location, etc).
+
+
+
+**LabVIEW\_SMR\_V8.1:**
+
+
+
+Model updated to reflect the new flow meter that was attached to the city water loop.
+
+
+
+**LabVIEW\_SMR\_V8.2:**
+
+
+
+Current through rod added via hall effect current sensor (up to 150A for now). With voltage and current, power is now calculated directly on LabVIEW
+Both current and power added to the CSV for "voltage", which now is named "power"
+
+
+
+**LabVIEW\_SMR\_V8.3:**
+
+Control to Honeywell linear actuated valve on heat exchanger output flow added. Basic PID control added, although need to look into creating multiple PID's or "gain scheduling" to make the PID response better.
+
+PID goal: to have a set flow rate through the heat exchanger that the valve will adjust itself to stay at.
+
+**LabVIEW\_SMR\_V9: CURRENT BEST MODEL**
+
+Room temperature readings added via thermocouple and copper block. Room temp is recorded in the Temperature CSV in the final column as "Room Temp (deg C). 
 
