@@ -407,6 +407,11 @@ def plot_groups(
             )
             handles.append(line)
 
+        # Show real values on the y axis. Without this, matplotlib may print a
+        # small offset such as "+1e3" at the top of the axis and label the ticks
+        # relative to it (a 1000 W signal then looks like it is centered on 0).
+        axis.ticklabel_format(axis="y", useOffset=False, style="plain")
+
         if two_axes:
             axis.set_ylabel(y_label, color=group_color)
             axis.tick_params(axis="y", colors=group_color)
