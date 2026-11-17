@@ -47,8 +47,10 @@ import pandas as pd
 # =============================================================================
 WINDOW_MIN = 10.0                 # window length (minutes)
 TEMP_SLOPE_MAX = 0.02             # steady-state limit on |dT/dt| (deg C / min)
-TEMP_EXCLUDE = ["T8"]             # channels ignored for the steady-state check
-                                  # (still saved in the output)
+TEMP_EXCLUDE = ["T8", "Room"]     # channels ignored for the steady-state check
+                                  # (still saved in the output). "Room" matches the
+                                  # "Room Temp (deg C)" column; room air drifts
+                                  # with the building, not with the loop.
 
 CHECK_POWER = True
 POWER_MIN_W = 100.0               # heater counts as ON above this mean power (W)
@@ -60,7 +62,7 @@ FLOW_MAX_VARIATION = 0.05         # window std / mean must be below this (5%)
 
 STARTUP_SECONDS = 10.0            # NaN/Inf rows in the first N seconds are skipped;
                                   # NaN/Inf anywhere later stops the script
-                                  # (except isolated flow dropouts, below)
+                                  # (except isolated dropouts, below)
 
 # Dropouts: the data logger sometimes writes Inf/blank values (and in flow.csv a
 # 0.0000 main loop flow) for a sample or two, then recovers. In ANY of the four
@@ -68,7 +70,7 @@ STARTUP_SECONDS = 10.0            # NaN/Inf rows in the first N seconds are skip
 # up) and ignored.
 MAX_DROPOUT_RUN = 3               # longest run of consecutive bad samples to ignore
 MAX_DROPOUT_FRACTION = 0.10       # a window with more than this share of blanked
-                                  # flow samples is rejected as not trustworthy
+                                  # samples is rejected as not trustworthy
 DROPOUT_ZERO_COLS = "main loop"   # a flow column whose name has this text and reads
                                   # exactly 0 counts as a dropout (if short)
 GAP_FACTOR = 3.0                  # a gap = time step > GAP_FACTOR x typical step
