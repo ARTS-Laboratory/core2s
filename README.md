@@ -6,7 +6,7 @@ A physical and digital testbed for experimenting with thermal, fluid, and contro
 
 
 <p align="center">
-<img src="media/thermal_loop.png" alt="drawing" width="300"/>
+<img src="media/thermal_loop_2026.jpg" alt="drawing" width="300"/>
 </p>
 <p align="center"> Pressurized thermal loop with key components annotated.
 </p>
