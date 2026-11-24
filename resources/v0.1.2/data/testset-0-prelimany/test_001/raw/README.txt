@@ -1,0 +1,1 @@
+This test set involves holding the inline valve at 0 degrees and sweeping the bypass valve from 0-90 degrees (fully open to fully closed). Power was held at 1 kW throughout all tests.

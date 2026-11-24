@@ -1,0 +1,2 @@
+test_set_1 contains 6 different steps of power (0.5-3kW), all at 1 gpm of flow through the heat exchanger. 
+further test sets will be the same steps of power, but with different flows through the heat exchanger. 
